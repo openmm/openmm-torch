@@ -42,137 +42,64 @@ CudaCalcNeuralNetworkForceKernel::~CudaCalcNeuralNetworkForceKernel() {
 }
 
 void CudaCalcNeuralNetworkForceKernel::initialize(const System& system, const NeuralNetworkForce& force, torch::jit::script::Module& module) {
-    cu.setAsCurrent();
     this->module = module;
+    module.to(torch::kCUDA);
     usePeriodic = force.usesPeriodicBoundaryConditions();
     int numParticles = system.getNumParticles();
+    torch::TensorOptions options = torch::TensorOptions()
+            .device(torch::kCUDA, cu.getDeviceIndex())
+            .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32)
+            .requires_grad(true);
+    posTensor = torch::empty({numParticles, 3}, options);
+    boxTensor = torch::empty({3, 3}, options);
 
     // Inititalize CUDA objects.
 
+    cu.setAsCurrent();
     map<string, string> defines;
-    if (cu.getUseDoublePrecision()) {
-        networkForces.initialize<double>(cu, 3*numParticles, "networkForces");
-        defines["FORCES_TYPE"] = "double";
-    }
-    else {
-        networkForces.initialize<float>(cu, 3*numParticles, "networkForces");
-        defines["FORCES_TYPE"] = "float";
-    }
     CUmodule program = cu.createModule(CudaNeuralNetworkKernelSources::neuralNetworkForce, defines);
+    copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
 }
 
 double CudaCalcNeuralNetworkForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
-    vector<Vec3> pos;
-    context.getPositions(pos);
     int numParticles = cu.getNumAtoms();
-    torch::Tensor posTensor = torch::from_blob(pos.data(), {numParticles, 3}, torch::kFloat64);
-    if (!cu.getUseDoublePrecision())
-        posTensor = posTensor.to(torch::kFloat32);
-    posTensor.set_requires_grad(true);
-    vector<torch::jit::IValue> inputs = {posTensor};
-    if (usePeriodic) {
-        Vec3 box[3];
-        cu.getPeriodicBoxVectors(box[0], box[1], box[2]);
-        torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
-        if (!cu.getUseDoublePrecision())
-            boxTensor = boxTensor.to(torch::kFloat32);
-        inputs.push_back(boxTensor);
+    void* posData;
+    void* boxData;
+    if (cu.getUseDoublePrecision()) {
+        posData = posTensor.data_ptr<double>();
+        boxData = boxTensor.data_ptr<double>();
     }
+    else {
+        posData = posTensor.data_ptr<float>();
+        boxData = boxTensor.data_ptr<float>();
+    }
+    void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
+            &numParticles, cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer()};
+    cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
+    vector<torch::jit::IValue> inputs = {posTensor};
+    if (usePeriodic)
+        inputs.push_back(boxTensor);
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
         torch::Tensor forceTensor = posTensor.grad();
+        cu.setAsCurrent();
+        void* data;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
-            double* data = forceTensor.data_ptr<double>();
-            networkForces.upload(data);
+            data = forceTensor.data_ptr<double>();
         }
         else {
             if (!(forceTensor.dtype() == torch::kFloat32))
                 forceTensor = forceTensor.to(torch::kFloat32);
-            float* data = forceTensor.data_ptr<float>();
-            networkForces.upload(data);
+            data = forceTensor.data_ptr<float>();
         }
         int paddedNumAtoms = cu.getPaddedNumAtoms();
-        void* args[] = {&networkForces.getDevicePointer(), &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
-        cu.executeKernel(addForcesKernel, args, numParticles);
+        void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
+        cu.executeKernel(addForcesKernel, forceArgs, numParticles);
+        posTensor.grad().zero_();
     }
     return energyTensor.item<double>();
-
-
-/*
-    vector<Vec3> pos;
-    context.getPositions(pos);
-    int numParticles = cu.getNumAtoms();
-    if (positionsType == TF_FLOAT) {
-        float* positions = reinterpret_cast<float*>(TF_TensorData(positionsTensor));
-        for (int i = 0; i < numParticles; i++) {
-            positions[3*i] = pos[i][0];
-            positions[3*i+1] = pos[i][1];
-            positions[3*i+2] = pos[i][2];
-        }
-    }
-    else {
-        double* positions = reinterpret_cast<double*>(TF_TensorData(positionsTensor));
-        for (int i = 0; i < numParticles; i++) {
-            positions[3*i] = pos[i][0];
-            positions[3*i+1] = pos[i][1];
-            positions[3*i+2] = pos[i][2];
-        }
-    }
-    if (usePeriodic) {
-        Vec3 box[3];
-        cu.getPeriodicBoxVectors(box[0], box[1], box[2]);
-        if (boxType == TF_FLOAT) {
-            float* boxVectors = reinterpret_cast<float*>(TF_TensorData(boxVectorsTensor));
-            for (int i = 0; i < 3; i++)
-                for (int j = 0; j < 3; j++)
-                    boxVectors[3*i+j] = box[i][j];
-        }
-        else {
-            double* boxVectors = reinterpret_cast<double*>(TF_TensorData(boxVectorsTensor));
-            for (int i = 0; i < 3; i++)
-                for (int j = 0; j < 3; j++)
-                    boxVectors[3*i+j] = box[i][j];
-        }
-    }
-    vector<TF_Output> inputs, outputs;
-    int forceOutputIndex = 0;
-    if (includeEnergy)
-        outputs.push_back({TF_GraphOperationByName(graph, "energy"), 0});
-    if (includeForces) {
-        forceOutputIndex = outputs.size();
-        outputs.push_back({TF_GraphOperationByName(graph, "forces"), 0});
-    }
-    vector<TF_Tensor*> inputTensors, outputTensors(outputs.size());
-    inputs.push_back({TF_GraphOperationByName(graph, "positions"), 0});
-    inputTensors.push_back(positionsTensor);
-    if (usePeriodic) {
-        inputs.push_back({TF_GraphOperationByName(graph, "boxvectors"), 0});
-        inputTensors.push_back(boxVectorsTensor);
-    }
-    TF_Status* status = TF_NewStatus();
-    TF_SessionRun(session, NULL, &inputs[0], &inputTensors[0], inputs.size(),
-                  &outputs[0], &outputTensors[0], outputs.size(),
-                  NULL, 0, NULL, status);
-    if (TF_GetCode(status) != TF_OK)
-        throw OpenMMException(string("Error running TensorFlow session: ")+TF_Message(status));
-    TF_DeleteStatus(status);
-    double energy = 0.0;
-    if (includeEnergy) {
-        if (energyType == TF_FLOAT)
-            energy = reinterpret_cast<float*>(TF_TensorData(outputTensors[0]))[0];
-        else
-            energy = reinterpret_cast<double*>(TF_TensorData(outputTensors[0]))[0];
-    }
-    if (includeForces) {
-        const void* data = TF_TensorData(outputTensors[forceOutputIndex]);
-        networkForces.upload(data);
-        int paddedNumAtoms = cu.getPaddedNumAtoms();
-        void* args[] = {&networkForces.getDevicePointer(), &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
-        cu.executeKernel(addForcesKernel, args, numParticles);
-    }
-    return energy;*/
 }

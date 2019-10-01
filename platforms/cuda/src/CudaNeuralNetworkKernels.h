@@ -68,9 +68,9 @@ private:
     bool hasInitializedKernel;
     OpenMM::CudaContext& cu;
     torch::jit::script::Module module;
+    torch::Tensor posTensor, boxTensor;
     bool usePeriodic;
-    OpenMM::CudaArray networkForces;
-    CUfunction addForcesKernel;
+    CUfunction copyInputsKernel, addForcesKernel;
 };
 
 } // namespace NNPlugin
