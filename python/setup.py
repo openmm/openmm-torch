@@ -32,7 +32,3 @@ setup(name='openmmnn',
       ext_modules=[extension],
      )
 
-setup(name='nnpops',
-      version='1.0',
-      py_modules=['nnpops'],
-     )
