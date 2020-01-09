@@ -9,7 +9,7 @@ nn_plugin_header_dir = '@NN_PLUGIN_HEADER_DIR@'
 nn_plugin_library_dir = '@NN_PLUGIN_LIBRARY_DIR@'
 
 # setup extra compile and link arguments on Mac
-extra_compile_args = []
+extra_compile_args = ['-std=c++11']
 extra_link_args = []
 
 if platform.system() == 'Darwin':
