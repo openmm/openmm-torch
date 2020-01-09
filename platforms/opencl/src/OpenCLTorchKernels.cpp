@@ -29,77 +29,77 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "CudaNeuralNetworkKernels.h"
-#include "CudaNeuralNetworkKernelSources.h"
+#include "OpenCLTorchKernels.h"
+#include "OpenCLTorchKernelSources.h"
 #include "openmm/internal/ContextImpl.h"
 #include <map>
 
-using namespace NNPlugin;
+using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-CudaCalcNeuralNetworkForceKernel::~CudaCalcNeuralNetworkForceKernel() {
+OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
 }
 
-void CudaCalcNeuralNetworkForceKernel::initialize(const System& system, const NeuralNetworkForce& force, torch::jit::script::Module& module) {
+void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
-    module.to(torch::kCUDA);
     usePeriodic = force.usesPeriodicBoundaryConditions();
     int numParticles = system.getNumParticles();
-    torch::TensorOptions options = torch::TensorOptions()
-            .device(torch::kCUDA, cu.getDeviceIndex())
-            .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32)
-            .requires_grad(true);
-    posTensor = torch::empty({numParticles, 3}, options);
-    boxTensor = torch::empty({3, 3}, options);
 
-    // Inititalize CUDA objects.
+    // Inititalize OpenCL objects.
 
-    cu.setAsCurrent();
     map<string, string> defines;
-    CUmodule program = cu.createModule(CudaNeuralNetworkKernelSources::neuralNetworkForce, defines);
-    copyInputsKernel = cu.getKernel(program, "copyInputs");
-    addForcesKernel = cu.getKernel(program, "addForces");
-}
-
-double CudaCalcNeuralNetworkForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
-    int numParticles = cu.getNumAtoms();
-    void* posData;
-    void* boxData;
-    if (cu.getUseDoublePrecision()) {
-        posData = posTensor.data_ptr<double>();
-        boxData = boxTensor.data_ptr<double>();
+    if (cl.getUseDoublePrecision()) {
+        networkForces.initialize<double>(cl, 3*numParticles, "networkForces");
+        defines["FORCES_TYPE"] = "double";
     }
     else {
-        posData = posTensor.data_ptr<float>();
-        boxData = boxTensor.data_ptr<float>();
+        networkForces.initialize<float>(cl, 3*numParticles, "networkForces");
+        defines["FORCES_TYPE"] = "float";
     }
-    void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
-            &numParticles, cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer()};
-    cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
+    cl::Program program = cl.createProgram(OpenCLTorchKernelSources::torchForce, defines);
+    addForcesKernel = cl::Kernel(program, "addForces");
+}
+
+double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
+    vector<Vec3> pos;
+    context.getPositions(pos);
+    int numParticles = cl.getNumAtoms();
+    torch::Tensor posTensor = torch::from_blob(pos.data(), {numParticles, 3}, torch::kFloat64);
+    if (!cl.getUseDoublePrecision())
+        posTensor = posTensor.to(torch::kFloat32);
+    posTensor.set_requires_grad(true);
     vector<torch::jit::IValue> inputs = {posTensor};
-    if (usePeriodic)
+    if (usePeriodic) {
+        Vec3 box[3];
+        cl.getPeriodicBoxVectors(box[0], box[1], box[2]);
+        torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
+        if (!cl.getUseDoublePrecision())
+            boxTensor = boxTensor.to(torch::kFloat32);
         inputs.push_back(boxTensor);
+    }
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
         torch::Tensor forceTensor = posTensor.grad();
-        cu.setAsCurrent();
-        void* data;
-        if (cu.getUseDoublePrecision()) {
+        if (cl.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
-            data = forceTensor.data_ptr<double>();
+            double* data = forceTensor.data_ptr<double>();
+            networkForces.upload(data);
         }
         else {
             if (!(forceTensor.dtype() == torch::kFloat32))
                 forceTensor = forceTensor.to(torch::kFloat32);
-            data = forceTensor.data_ptr<float>();
+            float* data = forceTensor.data_ptr<float>();
+            networkForces.upload(data);
         }
-        int paddedNumAtoms = cu.getPaddedNumAtoms();
-        void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
-        cu.executeKernel(addForcesKernel, forceArgs, numParticles);
-        posTensor.grad().zero_();
+        addForcesKernel.setArg<cl::Buffer>(0, networkForces.getDeviceBuffer());
+        addForcesKernel.setArg<cl::Buffer>(1, cl.getForceBuffers().getDeviceBuffer());
+        addForcesKernel.setArg<cl::Buffer>(2, cl.getAtomIndexArray().getDeviceBuffer());
+        addForcesKernel.setArg<cl_int>(3, numParticles);
+        cl.executeKernel(addForcesKernel, numParticles);
     }
     return energyTensor.item<double>();
 }
+

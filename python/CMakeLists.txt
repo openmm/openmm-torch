@@ -1,5 +1,5 @@
-set(WRAP_FILE NNPluginWrapper.cpp)
-set(MODULE_NAME openmmnn)
+set(WRAP_FILE TorchPluginWrapper.cpp)
+set(MODULE_NAME openmmtorch)
 
 # Execute SWIG to generate source code for the Python module.
 
@@ -9,8 +9,8 @@ add_custom_command(
         -python -c++
         -o "${WRAP_FILE}"
         "-I${OPENMM_DIR}/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/openmmnn.i"
-    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/openmmnn.i"
+        "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
 

@@ -1,8 +1,5 @@
-#ifndef OPENMM_CUDA_NEURAL_NETWORK_KERNEL_SOURCES_H_
-#define OPENMM_CUDA_NEURAL_NETWORK_KERNEL_SOURCES_H_
-
 /* -------------------------------------------------------------------------- *
- *                                   OpenMM                                   *
+ *                               OpenMM-NN                                      *
  * -------------------------------------------------------------------------- *
  * This is part of the OpenMM molecular simulation toolkit originating from   *
  * Simbios, the NIH National Center for Physics-Based Simulation of           *
@@ -32,21 +29,46 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include <string>
+#include <exception>
 
-namespace NNPlugin {
+#include "CudaTorchKernelFactory.h"
+#include "CudaTorchKernels.h"
+#include "openmm/internal/windowsExport.h"
+#include "openmm/internal/ContextImpl.h"
+#include "openmm/OpenMMException.h"
+#include <vector>
 
-/**
- * This class is a central holding place for the source code of CUDA kernels.
- * The CMake build script inserts declarations into it based on the .cu files in the
- * kernels subfolder.
- */
+using namespace TorchPlugin;
+using namespace OpenMM;
+using namespace std;
 
-class CudaNeuralNetworkKernelSources {
-public:
-@CUDA_FILE_DECLARATIONS@
-};
+extern "C" OPENMM_EXPORT void registerPlatforms() {
+}
 
-} // namespace NNPlugin
+extern "C" OPENMM_EXPORT void registerKernelFactories() {
+    try {
+        Platform& platform = Platform::getPlatformByName("CUDA");
+        CudaTorchKernelFactory* factory = new CudaTorchKernelFactory();
+        platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
+    }
+    catch (std::exception ex) {
+        // Ignore
+    }
+}
 
-#endif /*OPENMM_CUDA_NEURAL_NETWORK_KERNEL_SOURCES_H_*/
+extern "C" OPENMM_EXPORT void registerTorchCudaKernelFactories() {
+    try {
+        Platform::getPlatformByName("CUDA");
+    }
+    catch (...) {
+        Platform::registerPlatform(new CudaPlatform());
+    }
+    registerKernelFactories();
+}
+
+KernelImpl* CudaTorchKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
+    CudaContext& cu = *static_cast<CudaPlatform::PlatformData*>(context.getPlatformData())->contexts[0];
+    if (name == CalcTorchForceKernel::Name())
+        return new CudaCalcTorchForceKernel(name, platform, cu);
+    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
+}

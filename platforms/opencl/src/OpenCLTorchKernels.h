@@ -1,5 +1,5 @@
-#ifndef CUDA_NEURAL_NETWORK_KERNELS_H_
-#define CUDA_NEURAL_NETWORK_KERNELS_H_
+#ifndef OPENCL_TORCH_KERNELS_H_
+#define OPENCL_TORCH_KERNELS_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -32,29 +32,29 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkKernels.h"
-#include "openmm/cuda/CudaContext.h"
-#include "openmm/cuda/CudaArray.h"
+#include "TorchKernels.h"
+#include "openmm/opencl/OpenCLContext.h"
+#include "openmm/opencl/OpenCLArray.h"
 
-namespace NNPlugin {
+namespace TorchPlugin {
 
 /**
- * This kernel is invoked by NeuralNetworkForce to calculate the forces acting on the system and the energy of the system.
+ * This kernel is invoked by TorchForce to calculate the forces acting on the system and the energy of the system.
  */
-class CudaCalcNeuralNetworkForceKernel : public CalcNeuralNetworkForceKernel {
+class OpenCLCalcTorchForceKernel : public CalcTorchForceKernel {
 public:
-    CudaCalcNeuralNetworkForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::CudaContext& cu) :
-            CalcNeuralNetworkForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
+    OpenCLCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::OpenCLContext& cl) :
+            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cl(cl) {
     }
-    ~CudaCalcNeuralNetworkForceKernel();
+    ~OpenCLCalcTorchForceKernel();
     /**
      * Initialize the kernel.
      * 
      * @param system         the System this kernel will be applied to
-     * @param force          the NeuralNetworkForce this kernel will be used for
+     * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
      */
-    void initialize(const OpenMM::System& system, const NeuralNetworkForce& force, torch::jit::script::Module& module);
+    void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module);
     /**
      * Execute the kernel to calculate the forces and/or energy.
      *
@@ -66,13 +66,13 @@ public:
     double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
 private:
     bool hasInitializedKernel;
-    OpenMM::CudaContext& cu;
+    OpenMM::OpenCLContext& cl;
     torch::jit::script::Module module;
-    torch::Tensor posTensor, boxTensor;
     bool usePeriodic;
-    CUfunction copyInputsKernel, addForcesKernel;
+    OpenMM::OpenCLArray networkForces;
+    cl::Kernel addForcesKernel;
 };
 
-} // namespace NNPlugin
+} // namespace TorchPlugin
 
-#endif /*CUDA_NEURAL_NETWORK_KERNELS_H_*/
+#endif /*OPENCL_TORCH_KERNELS_H_*/

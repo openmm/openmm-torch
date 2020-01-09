@@ -30,10 +30,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * This tests the CUDA implementation of NeuralNetworkForce.
+ * This tests the Reference implementation of TorchForce.
  */
 
-#include "NeuralNetworkForce.h"
+#include "TorchForce.h"
 #include "openmm/internal/AssertionUtilities.h"
 #include "openmm/Context.h"
 #include "openmm/Platform.h"
@@ -44,15 +44,15 @@
 #include <iostream>
 #include <vector>
 
-using namespace NNPlugin;
+using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-extern "C" OPENMM_EXPORT void registerNeuralNetworkCudaKernelFactories();
+extern "C" OPENMM_EXPORT void registerTorchReferenceKernelFactories();
 
 void testForce() {
     // Create a random cloud of particles.
-    
+
     const int numParticles = 10;
     System system;
     vector<Vec3> positions(numParticles);
@@ -62,19 +62,19 @@ void testForce() {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    NeuralNetworkForce* force = new NeuralNetworkForce("tests/central.pt");
+    TorchForce* force = new TorchForce("tests/central.pt");
     system.addForce(force);
-    
+
     // Compute the forces and energy.
 
     VerletIntegrator integ(1.0);
-    Platform& platform = Platform::getPlatformByName("CUDA");
+    Platform& platform = Platform::getPlatformByName("Reference");
     Context context(system, integ, platform);
     context.setPositions(positions);
     State state = context.getState(State::Energy | State::Forces);
-    
+
     // See if the energy is correct.  The network defines a potential of the form E(r) = |r|^2
-    
+
     double expectedEnergy = 0;
     for (int i = 0; i < numParticles; i++) {
         Vec3 pos = positions[i];
@@ -98,14 +98,14 @@ void testPeriodicForce() {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    NeuralNetworkForce* force = new NeuralNetworkForce("tests/periodic.pt");
+    TorchForce* force = new TorchForce("tests/periodic.pt");
     force->setUsesPeriodicBoundaryConditions(true);
     system.addForce(force);
 
     // Compute the forces and energy.
-
+    
     VerletIntegrator integ(1.0);
-    Platform& platform = Platform::getPlatformByName("CUDA");
+    Platform& platform = Platform::getPlatformByName("Reference");
     Context context(system, integ, platform);
     context.setPositions(positions);
     State state = context.getState(State::Energy | State::Forces);
@@ -125,11 +125,9 @@ void testPeriodicForce() {
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 }
 
-int main(int argc, char* argv[]) {
+int main() {
     try {
-        registerNeuralNetworkCudaKernelFactories();
-        if (argc > 1)
-            Platform::getPlatformByName("CUDA").setPropertyDefaultValue("Precision", string(argv[1]));
+        registerTorchReferenceKernelFactories();
         testForce();
         testPeriodicForce();
     }

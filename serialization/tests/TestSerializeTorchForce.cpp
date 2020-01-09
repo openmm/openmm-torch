@@ -29,34 +29,45 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#ifdef WIN32
-#include <windows.h>
+#include "TorchForce.h"
+#include "openmm/Platform.h"
+#include "openmm/internal/AssertionUtilities.h"
+#include "openmm/serialization/XmlSerializer.h"
+#include <iostream>
 #include <sstream>
-#else
-#include <dlfcn.h>
-#include <dirent.h>
-#include <cstdlib>
-#endif
 
-#include "NeuralNetworkForce.h"
-#include "NeuralNetworkForceProxy.h"
-#include "openmm/serialization/SerializationProxy.h"
-
-#if defined(WIN32)
-    #include <windows.h>
-    extern "C" OPENMM_EXPORT_NN void registerNeuralNetworkSerializationProxies();
-    BOOL WINAPI DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
-        if (ul_reason_for_call == DLL_PROCESS_ATTACH)
-            registerNeuralNetworkSerializationProxies();
-        return TRUE;
-    }
-#else
-    extern "C" void __attribute__((constructor)) registerNeuralNetworkSerializationProxies();
-#endif
-
-using namespace NNPlugin;
+using namespace TorchPlugin;
 using namespace OpenMM;
+using namespace std;
 
-extern "C" OPENMM_EXPORT_NN void registerNeuralNetworkSerializationProxies() {
-    SerializationProxy::registerProxy(typeid(NeuralNetworkForce), new NeuralNetworkForceProxy());
+extern "C" void registerTorchSerializationProxies();
+
+void testSerialization() {
+    // Create a Force.
+
+    TorchForce force("module.pt");
+
+    // Serialize and then deserialize it.
+
+    stringstream buffer;
+    XmlSerializer::serialize<TorchForce>(&force, "Force", buffer);
+    TorchForce* copy = XmlSerializer::deserialize<TorchForce>(buffer);
+
+    // Compare the two forces to see if they are identical.
+
+    TorchForce& force2 = *copy;
+    ASSERT_EQUAL(force.getFile(), force2.getFile());
+}
+
+int main() {
+    try {
+        registerTorchSerializationProxies();
+        testSerialization();
+    }
+    catch(const exception& e) {
+        cout << "exception: " << e.what() << endl;
+        return 1;
+    }
+    cout << "Done" << endl;
+    return 0;
 }

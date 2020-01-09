@@ -1,8 +1,5 @@
-#ifndef OPENMM_NEURAL_NETWORK_FORCE_PROXY_H_
-#define OPENMM_NEURAL_NETWORK_FORCE_PROXY_H_
-
 /* -------------------------------------------------------------------------- *
- *                                 OpenMM-NN                                    *
+ *                               OpenMM-NN                                    *
  * -------------------------------------------------------------------------- *
  * This is part of the OpenMM molecular simulation toolkit originating from   *
  * Simbios, the NIH National Center for Physics-Based Simulation of           *
@@ -32,22 +29,46 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "internal/windowsExportNN.h"
-#include "openmm/serialization/SerializationProxy.h"
+#include <exception>
 
-namespace OpenMM {
+#include "OpenCLTorchKernelFactory.h"
+#include "OpenCLTorchKernels.h"
+#include "openmm/internal/windowsExport.h"
+#include "openmm/internal/ContextImpl.h"
+#include "openmm/OpenMMException.h"
+#include <vector>
 
-/**
- * This is a proxy for serializing NeuralNetworkForce objects.
- */
+using namespace TorchPlugin;
+using namespace OpenMM;
+using namespace std;
 
-class OPENMM_EXPORT_NN NeuralNetworkForceProxy : public SerializationProxy {
-public:
-    NeuralNetworkForceProxy();
-    void serialize(const void* object, SerializationNode& node) const;
-    void* deserialize(const SerializationNode& node) const;
-};
+extern "C" OPENMM_EXPORT void registerPlatforms() {
+}
 
-} // namespace OpenMM
+extern "C" OPENMM_EXPORT void registerKernelFactories() {
+    try {
+        Platform& platform = Platform::getPlatformByName("OpenCL");
+        OpenCLTorchKernelFactory* factory = new OpenCLTorchKernelFactory();
+        platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
+    }
+    catch (std::exception ex) {
+        // Ignore
+    }
+}
 
-#endif /*OPENMM_NEURAL_NETWORK_FORCE_PROXY_H_*/
+extern "C" OPENMM_EXPORT void registerTorchOpenCLKernelFactories() {
+    try {
+        Platform::getPlatformByName("OpenCL");
+    }
+    catch (...) {
+        Platform::registerPlatform(new OpenCLPlatform());
+    }
+    registerKernelFactories();
+}
+
+KernelImpl* OpenCLTorchKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
+    OpenCLContext& cl = *static_cast<OpenCLPlatform::PlatformData*>(context.getPlatformData())->contexts[0];
+    if (name == CalcTorchForceKernel::Name())
+        return new OpenCLCalcTorchForceKernel(name, platform, cl);
+    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
+}

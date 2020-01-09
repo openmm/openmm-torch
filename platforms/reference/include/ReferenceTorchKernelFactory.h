@@ -1,5 +1,5 @@
-#ifndef OPENMM_REFERENCE_NEURAL_NETWORK_KERNEL_FACTORY_H_
-#define OPENMM_REFERENCE_NEURAL_NETWORK_KERNEL_FACTORY_H_
+#ifndef OPENMM_REFERENCE_TORCH_KERNEL_FACTORY_H_
+#define OPENMM_REFERENCE_TORCH_KERNEL_FACTORY_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -37,14 +37,14 @@
 namespace OpenMM {
 
 /**
- * This KernelFactory creates kernels for the reference implementation of the neural network plugin.
+ * This KernelFactory creates kernels for the reference implementation of the Torch plugin.
  */
 
-class ReferenceNeuralNetworkKernelFactory : public KernelFactory {
+class ReferenceTorchKernelFactory : public KernelFactory {
 public:
     KernelImpl* createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const;
 };
 
 } // namespace OpenMM
 
-#endif /*OPENMM_REFERENCE_NEURAL_NETWORK_KERNEL_FACTORY_H_*/
+#endif /*OPENMM_REFERENCE_TORCH_KERNEL_FACTORY_H_*/

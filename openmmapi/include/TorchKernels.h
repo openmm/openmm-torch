@@ -1,5 +1,5 @@
-#ifndef OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_FACTORY_H_
-#define OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_FACTORY_H_
+#ifndef TORCH_KERNELS_H_
+#define TORCH_KERNELS_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -32,19 +32,44 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "openmm/KernelFactory.h"
+#include "TorchForce.h"
+#include "openmm/KernelImpl.h"
+#include "openmm/Platform.h"
+#include "openmm/System.h"
+#include <torch/torch.h>
+#include <string>
 
-namespace NNPlugin {
+namespace TorchPlugin {
 
 /**
- * This KernelFactory creates kernels for the OpenCL implementation of the neural network plugin.
+ * This kernel is invoked by TorchForce to calculate the forces acting on the system and the energy of the system.
  */
-
-class OpenCLNeuralNetworkKernelFactory : public OpenMM::KernelFactory {
+class CalcTorchForceKernel : public OpenMM::KernelImpl {
 public:
-    OpenMM::KernelImpl* createKernelImpl(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& context) const;
+    static std::string Name() {
+        return "CalcTorchForce";
+    }
+    CalcTorchForceKernel(std::string name, const OpenMM::Platform& platform) : OpenMM::KernelImpl(name, platform) {
+    }
+    /**
+     * Initialize the kernel.
+     * 
+     * @param system         the System this kernel will be applied to
+     * @param force          the TorchForce this kernel will be used for
+     * @param module         the PyTorch module to use for computing forces and energy
+     */
+    virtual void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module) = 0;
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    virtual double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy) = 0;
 };
 
-} // namespace NNPlugin
+} // namespace TorchPlugin
 
-#endif /*OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_FACTORY_H_*/
+#endif /*TORCH_KERNELS_H_*/

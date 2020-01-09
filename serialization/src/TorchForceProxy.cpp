@@ -1,8 +1,5 @@
-#ifndef OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_SOURCES_H_
-#define OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_SOURCES_H_
-
 /* -------------------------------------------------------------------------- *
- *                                   OpenMM                                   *
+ *                                 OpenMM-NN                                    *
  * -------------------------------------------------------------------------- *
  * This is part of the OpenMM molecular simulation toolkit originating from   *
  * Simbios, the NIH National Center for Physics-Based Simulation of           *
@@ -32,21 +29,27 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
+#include "TorchForceProxy.h"
+#include "TorchForce.h"
+#include "openmm/serialization/SerializationNode.h"
 #include <string>
 
-namespace NNPlugin {
+using namespace TorchPlugin;
+using namespace OpenMM;
+using namespace std;
 
-/**
- * This class is a central holding place for the source code of OpenCL kernels.
- * The CMake build script inserts declarations into it based on the .cl files in the
- * kernels subfolder.
- */
+TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
+}
 
-class OpenCLNeuralNetworkKernelSources {
-public:
-@CL_FILE_DECLARATIONS@
-};
+void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
+    node.setIntProperty("version", 1);
+    const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
+    node.setStringProperty("file", force.getFile());
+}
 
-} // namespace NNePlugin
-
-#endif /*OPENMM_OPENCL_NEURAL_NETWORK_KERNEL_SOURCES_H_*/
+void* TorchForceProxy::deserialize(const SerializationNode& node) const {
+    if (node.getIntProperty("version") != 1)
+        throw OpenMMException("Unsupported version number");
+    TorchForce* force = new TorchForce(node.getStringProperty("file"));
+    return force;
+}

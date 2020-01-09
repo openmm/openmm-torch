@@ -1,5 +1,8 @@
+#ifndef REFERENCE_TORCH_KERNELS_H_
+#define REFERENCE_TORCH_KERNELS_H_
+
 /* -------------------------------------------------------------------------- *
- *                               OpenMM-NN                                    *
+ *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
  * This is part of the OpenMM molecular simulation toolkit originating from   *
  * Simbios, the NIH National Center for Physics-Based Simulation of           *
@@ -29,48 +32,43 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include <exception>
-
-#include "OpenCLNeuralNetworkKernelFactory.h"
-#include "OpenCLNeuralNetworkKernels.h"
-#include "openmm/internal/windowsExport.h"
-#include "openmm/internal/ContextImpl.h"
-#include "openmm/OpenMMException.h"
+#include "TorchKernels.h"
+#include "openmm/Platform.h"
 #include <vector>
 
-using namespace NNPlugin;
-using namespace OpenMM;
-using namespace std;
+namespace TorchPlugin {
 
-extern "C" OPENMM_EXPORT void registerPlatforms() {
-}
+/**
+ * This kernel is invoked by TorchForce to calculate the forces acting on the system and the energy of the system.
+ */
+class ReferenceCalcTorchForceKernel : public CalcTorchForceKernel {
+public:
+    ReferenceCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform) : CalcTorchForceKernel(name, platform) {
+    }
+    ~ReferenceCalcTorchForceKernel();
+    /**
+     * Initialize the kernel.
+     * 
+     * @param system         the System this kernel will be applied to
+     * @param force          the TorchForce this kernel will be used for
+     * @param module         the PyTorch module to use for computing forces and energy
+     */
+    void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module);
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+private:
+    torch::jit::script::Module module;
+    std::vector<float> positions, boxVectors;
+    bool usePeriodic;
+};
 
-extern "C" OPENMM_EXPORT void registerKernelFactories() {
-    try {
-        int argc = 0;
-        vector<char**> argv = {NULL};
-        Platform& platform = Platform::getPlatformByName("OpenCL");
-        OpenCLNeuralNetworkKernelFactory* factory = new OpenCLNeuralNetworkKernelFactory();
-        platform.registerKernelFactory(CalcNeuralNetworkForceKernel::Name(), factory);
-    }
-    catch (std::exception ex) {
-        // Ignore
-    }
-}
+} // namespace TorchPlugin
 
-extern "C" OPENMM_EXPORT void registerNeuralNetworkOpenCLKernelFactories() {
-    try {
-        Platform::getPlatformByName("OpenCL");
-    }
-    catch (...) {
-        Platform::registerPlatform(new OpenCLPlatform());
-    }
-    registerKernelFactories();
-}
-
-KernelImpl* OpenCLNeuralNetworkKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
-    OpenCLContext& cl = *static_cast<OpenCLPlatform::PlatformData*>(context.getPlatformData())->contexts[0];
-    if (name == CalcNeuralNetworkForceKernel::Name())
-        return new OpenCLCalcNeuralNetworkForceKernel(name, platform, cl);
-    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
-}
+#endif /*REFERENCE_TORCH_KERNELS_H_*/

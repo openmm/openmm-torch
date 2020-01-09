@@ -1,6 +1,3 @@
-#ifndef NEURAL_NETWORK_KERNELS_H_
-#define NEURAL_NETWORK_KERNELS_H_
-
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
@@ -32,44 +29,41 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkForce.h"
-#include "openmm/KernelImpl.h"
-#include "openmm/Platform.h"
-#include "openmm/System.h"
-#include <torch/torch.h>
-#include <string>
+#include "internal/TorchForceImpl.h"
+#include "TorchKernels.h"
+#include "openmm/OpenMMException.h"
+#include "openmm/internal/ContextImpl.h"
+#include <torch/script.h>
 
-namespace NNPlugin {
+using namespace TorchPlugin;
+using namespace OpenMM;
+using namespace std;
 
-/**
- * This kernel is invoked by NeuralNetworkForce to calculate the forces acting on the system and the energy of the system.
- */
-class CalcNeuralNetworkForceKernel : public OpenMM::KernelImpl {
-public:
-    static std::string Name() {
-        return "CalcNeuralNetworkForce";
-    }
-    CalcNeuralNetworkForceKernel(std::string name, const OpenMM::Platform& platform) : OpenMM::KernelImpl(name, platform) {
-    }
-    /**
-     * Initialize the kernel.
-     * 
-     * @param system         the System this kernel will be applied to
-     * @param force          the NeuralNetworkForce this kernel will be used for
-     * @param module         the PyTorch module to use for computing forces and energy
-     */
-    virtual void initialize(const OpenMM::System& system, const NeuralNetworkForce& force, torch::jit::script::Module& module) = 0;
-    /**
-     * Execute the kernel to calculate the forces and/or energy.
-     *
-     * @param context        the context in which to execute this kernel
-     * @param includeForces  true if forces should be calculated
-     * @param includeEnergy  true if the energy should be calculated
-     * @return the potential energy due to the force
-     */
-    virtual double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy) = 0;
-};
+TorchForceImpl::TorchForceImpl(const TorchForce& owner) : owner(owner) {
+}
 
-} // namespace NNPlugin
+TorchForceImpl::~TorchForceImpl() {
+}
 
-#endif /*NEURAL_NETWORK_KERNELS_H_*/
+void TorchForceImpl::initialize(ContextImpl& context) {
+    // Load the module from the file.
+
+    module = torch::jit::load(owner.getFile());
+
+    // Create the kernel.
+
+    kernel = context.getPlatform().createKernel(CalcTorchForceKernel::Name(), context);
+    kernel.getAs<CalcTorchForceKernel>().initialize(context.getSystem(), owner, module);
+}
+
+double TorchForceImpl::calcForcesAndEnergy(ContextImpl& context, bool includeForces, bool includeEnergy, int groups) {
+    if ((groups&(1<<owner.getForceGroup())) != 0)
+        return kernel.getAs<CalcTorchForceKernel>().execute(context, includeForces, includeEnergy);
+    return 0.0;
+}
+
+std::vector<std::string> TorchForceImpl::getKernelNames() {
+    std::vector<std::string> names;
+    names.push_back(CalcTorchForceKernel::Name());
+    return names;
+}

@@ -66,19 +66,19 @@ module = torch.jit.script(ForceModule())
 module.save('model.pt')
 ```
 
-To use the model in a simulation, create a `NeuralNetworkForce` object and add
+To use the model in a simulation, create a `TorchForce` object and add
 it to your `System`.  The constructor takes the path to the saved model as an
 argument.  For example,
 
 ```python
-from openmmnn import *
-f = NeuralNetworkForce('model.pt')
+from openmmtorch import *
+f = TorchForce('model.pt')
 system.addForce(f)
 ```
 
 When defining the model to perform a calculation, you may want to apply
 periodic boundary conditions.  To do this, call `setUsesPeriodicBoundaryConditions(True)`
-on the `NeuralNetworkForce`.  The graph is then expected to take a second input,
+on the `TorchForce`.  The graph is then expected to take a second input,
 which contains the current periodic box vectors.  You
 can make use of them in whatever way you want for computing the force.  For
 example, the following code applies periodic boundary conditions to each
@@ -104,7 +104,7 @@ Simbios, the NIH National Center for Physics-Based Simulation of
 Biological Structures at Stanford, funded under the NIH Roadmap for
 Medical Research, grant U54 GM072970. See https://simtk.org.
 
-Portions copyright (c) 2018 Stanford University and the Authors.
+Portions copyright (c) 2018-2020 Stanford University and the Authors.
 
 Authors: Peter Eastman
 

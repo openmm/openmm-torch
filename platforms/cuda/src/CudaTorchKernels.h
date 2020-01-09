@@ -1,3 +1,6 @@
+#ifndef CUDA_TORCH_KERNELS_H_
+#define CUDA_TORCH_KERNELS_H_
+
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
@@ -29,31 +32,47 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkForce.h"
-#include "internal/NeuralNetworkForceImpl.h"
-#include "openmm/OpenMMException.h"
-#include "openmm/internal/AssertionUtilities.h"
-#include <fstream>
+#include "TorchKernels.h"
+#include "openmm/cuda/CudaContext.h"
+#include "openmm/cuda/CudaArray.h"
 
-using namespace NNPlugin;
-using namespace OpenMM;
-using namespace std;
+namespace TorchPlugin {
 
-NeuralNetworkForce::NeuralNetworkForce(const std::string& file) : file(file), usePeriodic(false) {
-}
+/**
+ * This kernel is invoked by TorchForce to calculate the forces acting on the system and the energy of the system.
+ */
+class CudaCalcTorchForceKernel : public CalcTorchForceKernel {
+public:
+    CudaCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::CudaContext& cu) :
+            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
+    }
+    ~CudaCalcTorchForceKernel();
+    /**
+     * Initialize the kernel.
+     * 
+     * @param system         the System this kernel will be applied to
+     * @param force          the TorchForce this kernel will be used for
+     * @param module         the PyTorch module to use for computing forces and energy
+     */
+    void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module);
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+private:
+    bool hasInitializedKernel;
+    OpenMM::CudaContext& cu;
+    torch::jit::script::Module module;
+    torch::Tensor posTensor, boxTensor;
+    bool usePeriodic;
+    CUfunction copyInputsKernel, addForcesKernel;
+};
 
-const string& NeuralNetworkForce::getFile() const {
-    return file;
-}
+} // namespace TorchPlugin
 
-ForceImpl* NeuralNetworkForce::createImpl() const {
-    return new NeuralNetworkForceImpl(*this);
-}
-
-void NeuralNetworkForce::setUsesPeriodicBoundaryConditions(bool periodic) {
-    usePeriodic = periodic;
-}
-
-bool NeuralNetworkForce::usesPeriodicBoundaryConditions() const {
-    return usePeriodic;
-}
+#endif /*CUDA_TORCH_KERNELS_H_*/
