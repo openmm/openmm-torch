@@ -1,5 +1,5 @@
-#ifndef OPENMM_NEURAL_NETWORK_FORCE_IMPL_H_
-#define OPENMM_NEURAL_NETWORK_FORCE_IMPL_H_
+#ifndef OPENMM_CUDA_TORCH_KERNEL_FACTORY_H_
+#define OPENMM_CUDA_TORCH_KERNEL_FACTORY_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -32,44 +32,19 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkForce.h"
-#include "openmm/internal/ForceImpl.h"
-#include "openmm/Kernel.h"
-#include <torch/torch.h>
-#include <utility>
-#include <set>
-#include <string>
+#include "openmm/KernelFactory.h"
 
-namespace NNPlugin {
-
-class System;
+namespace OpenMM {
 
 /**
- * This is the internal implementation of NeuralNetworkForce.
+ * This KernelFactory creates kernels for the CUDA implementation of the Torch plugin.
  */
 
-class OPENMM_EXPORT_NN NeuralNetworkForceImpl : public OpenMM::ForceImpl {
+class CudaTorchKernelFactory : public KernelFactory {
 public:
-    NeuralNetworkForceImpl(const NeuralNetworkForce& owner);
-    ~NeuralNetworkForceImpl();
-    void initialize(OpenMM::ContextImpl& context);
-    const NeuralNetworkForce& getOwner() const {
-        return owner;
-    }
-    void updateContextState(OpenMM::ContextImpl& context, bool& forcesInvalid) {
-        // This force field doesn't update the state directly.
-    }
-    double calcForcesAndEnergy(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy, int groups);
-    std::map<std::string, double> getDefaultParameters() {
-        return std::map<std::string, double>(); // This force field doesn't define any parameters.
-    }
-    std::vector<std::string> getKernelNames();
-private:
-    const NeuralNetworkForce& owner;
-    OpenMM::Kernel kernel;
-    torch::jit::script::Module module;
+    KernelImpl* createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const;
 };
 
-} // namespace NNPlugin
+} // namespace OpenMM
 
-#endif /*OPENMM_NEURAL_NETWORK_FORCE_IMPL_H_*/
+#endif /*OPENMM_CUDA_TORCH_KERNEL_FACTORY_H_*/

@@ -1,11 +1,11 @@
 #---------------------------------------------------
-# OpenMM NeuralNetwork Plugin OpenCL Platform
+# OpenMM Torch Plugin OpenCL Platform
 #----------------------------------------------------
 
 # Collect up information about the version of the OpenMM library we're building
 # and make it available to the code so it can be built into the binaries.
 
-SET(NN_OPENCL_LIBRARY_NAME OpenMMNNOpenCL)
+SET(NN_OPENCL_LIBRARY_NAME OpenMMTorchOpenCL)
 
 SET(SHARED_TARGET ${NN_OPENCL_LIBRARY_NAME})
 
@@ -39,7 +39,7 @@ INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/platforms/opencl/src)
 # Set variables needed for encoding kernel sources into a C++ class
 
 SET(CL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
-SET(CL_SOURCE_CLASS OpenCLNeuralNetworkKernelSources)
+SET(CL_SOURCE_CLASS OpenCLTorchKernelSources)
 SET(CL_KERNELS_CPP ${CMAKE_CURRENT_BINARY_DIR}/src/${CL_SOURCE_CLASS}.cpp)
 SET(CL_KERNELS_H ${CMAKE_CURRENT_BINARY_DIR}/src/${CL_SOURCE_CLASS}.h)
 SET(SOURCE_FILES ${SOURCE_FILES} ${CL_KERNELS_CPP} ${CL_KERNELS_H})

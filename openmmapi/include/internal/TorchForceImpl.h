@@ -1,5 +1,5 @@
-#ifndef OPENMM_NEURAL_NETWORKFORCE_H_
-#define OPENMM_NEURAL_NETWORKFORCE_H_
+#ifndef OPENMM_TORCH_FORCE_IMPL_H_
+#define OPENMM_TORCH_FORCE_IMPL_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -32,47 +32,44 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "openmm/Context.h"
-#include "openmm/Force.h"
+#include "TorchForce.h"
+#include "openmm/internal/ForceImpl.h"
+#include "openmm/Kernel.h"
+#include <torch/torch.h>
+#include <utility>
+#include <set>
 #include <string>
-#include "internal/windowsExportNN.h"
 
-namespace NNPlugin {
+namespace TorchPlugin {
+
+class System;
 
 /**
- * This class implements forces that are defined by user-supplied neural networks.
- * It uses the PyTorch library to perform the computations. */
+ * This is the internal implementation of TorchForce.
+ */
 
-class OPENMM_EXPORT_NN NeuralNetworkForce : public OpenMM::Force {
+class OPENMM_EXPORT_NN TorchForceImpl : public OpenMM::ForceImpl {
 public:
-    /**
-     * Create a NeuralNetworkForce.  The network is defined by a PyTorch ScriptModule saved
-     * to a file.
-     *
-     * @param file   the path to the file containing the network
-     */
-    NeuralNetworkForce(const std::string& file);
-    /**
-     * Get the path to the file containing the network.
-     */
-    const std::string& getFile() const;
-    /**
-     * Set whether this force makes use of periodic boundary conditions.  If this is set
-     * to true, the network must take a 3x3 tensor as its second input, which
-     * is set to the current periodic box vectors.
-     */
-    void setUsesPeriodicBoundaryConditions(bool periodic);
-    /**
-     * Get whether this force makes use of periodic boundary conditions.
-     */
-    bool usesPeriodicBoundaryConditions() const;
-protected:
-    OpenMM::ForceImpl* createImpl() const;
+    TorchForceImpl(const TorchForce& owner);
+    ~TorchForceImpl();
+    void initialize(OpenMM::ContextImpl& context);
+    const TorchForce& getOwner() const {
+        return owner;
+    }
+    void updateContextState(OpenMM::ContextImpl& context, bool& forcesInvalid) {
+        // This force field doesn't update the state directly.
+    }
+    double calcForcesAndEnergy(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy, int groups);
+    std::map<std::string, double> getDefaultParameters() {
+        return std::map<std::string, double>(); // This force field doesn't define any parameters.
+    }
+    std::vector<std::string> getKernelNames();
 private:
-    std::string file;
-    bool usePeriodic;
+    const TorchForce& owner;
+    OpenMM::Kernel kernel;
+    torch::jit::script::Module module;
 };
 
-} // namespace NNPlugin
+} // namespace TorchPlugin
 
-#endif /*OPENMM_NEURAL_NETWORKFORCE_H_*/
+#endif /*OPENMM_TORCH_FORCE_IMPL_H_*/

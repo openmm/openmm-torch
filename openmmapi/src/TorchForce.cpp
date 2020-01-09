@@ -1,6 +1,3 @@
-#ifndef OPENMM_CUDA_NEURAL_NETWORK_KERNEL_FACTORY_H_
-#define OPENMM_CUDA_NEURAL_NETWORK_KERNEL_FACTORY_H_
-
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
@@ -32,19 +29,31 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "openmm/KernelFactory.h"
+#include "TorchForce.h"
+#include "internal/TorchForceImpl.h"
+#include "openmm/OpenMMException.h"
+#include "openmm/internal/AssertionUtilities.h"
+#include <fstream>
 
-namespace OpenMM {
+using namespace TorchPlugin;
+using namespace OpenMM;
+using namespace std;
 
-/**
- * This KernelFactory creates kernels for the CUDA implementation of the neural network plugin.
- */
+TorchForce::TorchForce(const std::string& file) : file(file), usePeriodic(false) {
+}
 
-class CudaNeuralNetworkKernelFactory : public KernelFactory {
-public:
-    KernelImpl* createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const;
-};
+const string& TorchForce::getFile() const {
+    return file;
+}
 
-} // namespace OpenMM
+ForceImpl* TorchForce::createImpl() const {
+    return new TorchForceImpl(*this);
+}
 
-#endif /*OPENMM_CUDA_NEURAL_NETWORK_KERNEL_FACTORY_H_*/
+void TorchForce::setUsesPeriodicBoundaryConditions(bool periodic) {
+    usePeriodic = periodic;
+}
+
+bool TorchForce::usesPeriodicBoundaryConditions() const {
+    return usePeriodic;
+}

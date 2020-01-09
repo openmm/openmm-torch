@@ -30,10 +30,10 @@
  * -------------------------------------------------------------------------- */
 
 /**
- * This tests the OpenCL implementation of NeuralNetworkForce.
+ * This tests the CUDA implementation of TorchForce.
  */
 
-#include "NeuralNetworkForce.h"
+#include "TorchForce.h"
 #include "openmm/internal/AssertionUtilities.h"
 #include "openmm/Context.h"
 #include "openmm/Platform.h"
@@ -44,11 +44,11 @@
 #include <iostream>
 #include <vector>
 
-using namespace NNPlugin;
+using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-extern "C" OPENMM_EXPORT void registerNeuralNetworkOpenCLKernelFactories();
+extern "C" OPENMM_EXPORT void registerTorchCudaKernelFactories();
 
 void testForce() {
     // Create a random cloud of particles.
@@ -62,13 +62,13 @@ void testForce() {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    NeuralNetworkForce* force = new NeuralNetworkForce("tests/central.pt");
+    TorchForce* force = new TorchForce("tests/central.pt");
     system.addForce(force);
     
     // Compute the forces and energy.
 
     VerletIntegrator integ(1.0);
-    Platform& platform = Platform::getPlatformByName("OpenCL");
+    Platform& platform = Platform::getPlatformByName("CUDA");
     Context context(system, integ, platform);
     context.setPositions(positions);
     State state = context.getState(State::Energy | State::Forces);
@@ -98,14 +98,14 @@ void testPeriodicForce() {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    NeuralNetworkForce* force = new NeuralNetworkForce("tests/periodic.pt");
+    TorchForce* force = new TorchForce("tests/periodic.pt");
     force->setUsesPeriodicBoundaryConditions(true);
     system.addForce(force);
 
     // Compute the forces and energy.
 
     VerletIntegrator integ(1.0);
-    Platform& platform = Platform::getPlatformByName("OpenCL");
+    Platform& platform = Platform::getPlatformByName("CUDA");
     Context context(system, integ, platform);
     context.setPositions(positions);
     State state = context.getState(State::Energy | State::Forces);
@@ -127,9 +127,9 @@ void testPeriodicForce() {
 
 int main(int argc, char* argv[]) {
     try {
-        registerNeuralNetworkOpenCLKernelFactories();
+        registerTorchCudaKernelFactories();
         if (argc > 1)
-            Platform::getPlatformByName("OpenCL").setPropertyDefaultValue("Precision", string(argv[1]));
+            Platform::getPlatformByName("CUDA").setPropertyDefaultValue("Precision", string(argv[1]));
         testForce();
         testPeriodicForce();
     }

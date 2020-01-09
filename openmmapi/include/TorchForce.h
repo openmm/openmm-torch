@@ -1,5 +1,5 @@
-#ifndef REFERENCE_NEURAL_NETWORK_KERNELS_H_
-#define REFERENCE_NEURAL_NETWORK_KERNELS_H_
+#ifndef OPENMM_TORCHFORCE_H_
+#define OPENMM_TORCHFORCE_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -32,43 +32,47 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkKernels.h"
-#include "openmm/Platform.h"
-#include <vector>
+#include "openmm/Context.h"
+#include "openmm/Force.h"
+#include <string>
+#include "internal/windowsExportTorch.h"
 
-namespace NNPlugin {
+namespace TorchPlugin {
 
 /**
- * This kernel is invoked by NeuralNetworkForce to calculate the forces acting on the system and the energy of the system.
- */
-class ReferenceCalcNeuralNetworkForceKernel : public CalcNeuralNetworkForceKernel {
+ * This class implements forces that are defined by user-supplied neural networks.
+ * It uses the PyTorch library to perform the computations. */
+
+class OPENMM_EXPORT_NN TorchForce : public OpenMM::Force {
 public:
-    ReferenceCalcNeuralNetworkForceKernel(std::string name, const OpenMM::Platform& platform) : CalcNeuralNetworkForceKernel(name, platform) {
-    }
-    ~ReferenceCalcNeuralNetworkForceKernel();
     /**
-     * Initialize the kernel.
-     * 
-     * @param system         the System this kernel will be applied to
-     * @param force          the NeuralNetworkForce this kernel will be used for
-     * @param module         the PyTorch module to use for computing forces and energy
-     */
-    void initialize(const OpenMM::System& system, const NeuralNetworkForce& force, torch::jit::script::Module& module);
-    /**
-     * Execute the kernel to calculate the forces and/or energy.
+     * Create a TorchForce.  The network is defined by a PyTorch ScriptModule saved
+     * to a file.
      *
-     * @param context        the context in which to execute this kernel
-     * @param includeForces  true if forces should be calculated
-     * @param includeEnergy  true if the energy should be calculated
-     * @return the potential energy due to the force
+     * @param file   the path to the file containing the network
      */
-    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+    TorchForce(const std::string& file);
+    /**
+     * Get the path to the file containing the network.
+     */
+    const std::string& getFile() const;
+    /**
+     * Set whether this force makes use of periodic boundary conditions.  If this is set
+     * to true, the network must take a 3x3 tensor as its second input, which
+     * is set to the current periodic box vectors.
+     */
+    void setUsesPeriodicBoundaryConditions(bool periodic);
+    /**
+     * Get whether this force makes use of periodic boundary conditions.
+     */
+    bool usesPeriodicBoundaryConditions() const;
+protected:
+    OpenMM::ForceImpl* createImpl() const;
 private:
-    torch::jit::script::Module module;
-    std::vector<float> positions, boxVectors;
+    std::string file;
     bool usePeriodic;
 };
 
-} // namespace NNPlugin
+} // namespace TorchPlugin
 
-#endif /*REFERENCE_NEURAL_NETWORK_KERNELS_H_*/
+#endif /*OPENMM_TORCHFORCE_H_*/

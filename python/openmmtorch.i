@@ -1,11 +1,11 @@
-%module openmmnn
+%module openmmtorch
 
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 %include <std_string.i>
 
 %{
-#include "NeuralNetworkForce.h"
+#include "TorchForce.h"
 #include "OpenMM.h"
 #include "OpenMMAmoeba.h"
 #include "OpenMMDrude.h"
@@ -25,25 +25,25 @@
     }
 }
 
-namespace NNPlugin {
+namespace TorchPlugin {
 
-class NeuralNetworkForce : public OpenMM::Force {
+class TorchForce : public OpenMM::Force {
 public:
-    NeuralNetworkForce(const std::string& file);
+    TorchForce(const std::string& file);
     const std::string& getFile() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
     bool usesPeriodicBoundaryConditions() const;
 
     /*
-     * Add methods for casting a Force to a NeuralNetworkForce.
+     * Add methods for casting a Force to a TorchForce.
     */
     %extend {
-        static NNPlugin::NeuralNetworkForce& cast(OpenMM::Force& force) {
-            return dynamic_cast<NNPlugin::NeuralNetworkForce&>(force);
+        static TorchPlugin::TorchForce& cast(OpenMM::Force& force) {
+            return dynamic_cast<TorchPlugin::TorchForce&>(force);
         }
 
         static bool isinstance(OpenMM::Force& force) {
-            return (dynamic_cast<NNPlugin::NeuralNetworkForce*>(&force) != NULL);
+            return (dynamic_cast<TorchPlugin::TorchForce*>(&force) != NULL);
         }
     }
 };

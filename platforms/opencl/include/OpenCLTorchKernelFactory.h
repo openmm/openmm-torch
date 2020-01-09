@@ -1,5 +1,8 @@
+#ifndef OPENMM_OPENCL_TORCH_KERNEL_FACTORY_H_
+#define OPENMM_OPENCL_TORCH_KERNEL_FACTORY_H_
+
 /* -------------------------------------------------------------------------- *
- *                               OpenMM-NN                                    *
+ *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
  * This is part of the OpenMM molecular simulation toolkit originating from   *
  * Simbios, the NIH National Center for Physics-Based Simulation of           *
@@ -29,39 +32,19 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "ReferenceNeuralNetworkKernelFactory.h"
-#include "ReferenceNeuralNetworkKernels.h"
-#include "openmm/reference/ReferencePlatform.h"
-#include "openmm/internal/ContextImpl.h"
-#include "openmm/OpenMMException.h"
-#include <vector>
+#include "openmm/KernelFactory.h"
 
-using namespace NNPlugin;
-using namespace OpenMM;
-using namespace std;
+namespace TorchPlugin {
 
-extern "C" OPENMM_EXPORT void registerPlatforms() {
-}
+/**
+ * This KernelFactory creates kernels for the OpenCL implementation of the Torch plugin.
+ */
 
-extern "C" OPENMM_EXPORT void registerKernelFactories() {
-    int argc = 0;
-    vector<char**> argv = {NULL};
-    for (int i = 0; i < Platform::getNumPlatforms(); i++) {
-        Platform& platform = Platform::getPlatform(i);
-        if (dynamic_cast<ReferencePlatform*>(&platform) != NULL) {
-            ReferenceNeuralNetworkKernelFactory* factory = new ReferenceNeuralNetworkKernelFactory();
-            platform.registerKernelFactory(CalcNeuralNetworkForceKernel::Name(), factory);
-        }
-    }
-}
+class OpenCLTorchKernelFactory : public OpenMM::KernelFactory {
+public:
+    OpenMM::KernelImpl* createKernelImpl(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& context) const;
+};
 
-extern "C" OPENMM_EXPORT void registerNeuralNetworkReferenceKernelFactories() {
-    registerKernelFactories();
-}
+} // namespace TorchPlugin
 
-KernelImpl* ReferenceNeuralNetworkKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
-    ReferencePlatform::PlatformData& data = *static_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
-    if (name == CalcNeuralNetworkForceKernel::Name())
-        return new ReferenceCalcNeuralNetworkForceKernel(name, platform);
-    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
-}
+#endif /*OPENMM_OPENCL_TORCH_KERNEL_FACTORY_H_*/

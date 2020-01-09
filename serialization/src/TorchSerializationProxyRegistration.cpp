@@ -29,27 +29,34 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "NeuralNetworkForceProxy.h"
-#include "NeuralNetworkForce.h"
-#include "openmm/serialization/SerializationNode.h"
-#include <string>
+#ifdef WIN32
+#include <windows.h>
+#include <sstream>
+#else
+#include <dlfcn.h>
+#include <dirent.h>
+#include <cstdlib>
+#endif
 
-using namespace NNPlugin;
+#include "TorchForce.h"
+#include "TorchForceProxy.h"
+#include "openmm/serialization/SerializationProxy.h"
+
+#if defined(WIN32)
+    #include <windows.h>
+    extern "C" OPENMM_EXPORT_NN void registerTorchSerializationProxies();
+    BOOL WINAPI DllMain(HANDLE hModule, DWORD  ul_reason_for_call, LPVOID lpReserved) {
+        if (ul_reason_for_call == DLL_PROCESS_ATTACH)
+            registerTorchSerializationProxies();
+        return TRUE;
+    }
+#else
+    extern "C" void __attribute__((constructor)) registerTorchSerializationProxies();
+#endif
+
+using namespace TorchPlugin;
 using namespace OpenMM;
-using namespace std;
 
-NeuralNetworkForceProxy::NeuralNetworkForceProxy() : SerializationProxy("NeuralNetworkForce") {
-}
-
-void NeuralNetworkForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", 1);
-    const NeuralNetworkForce& force = *reinterpret_cast<const NeuralNetworkForce*>(object);
-    node.setStringProperty("file", force.getFile());
-}
-
-void* NeuralNetworkForceProxy::deserialize(const SerializationNode& node) const {
-    if (node.getIntProperty("version") != 1)
-        throw OpenMMException("Unsupported version number");
-    NeuralNetworkForce* force = new NeuralNetworkForce(node.getStringProperty("file"));
-    return force;
+extern "C" OPENMM_EXPORT_NN void registerTorchSerializationProxies() {
+    SerializationProxy::registerProxy(typeid(TorchForce), new TorchForceProxy());
 }
