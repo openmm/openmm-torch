@@ -1,31 +1,36 @@
 import simtk.openmm as mm
 import simtk.unit as unit
-import openmmtorch as nn
-import tensorflow as tf
+import openmmtorch as ot
+import numpy as np
 import unittest
 
 class TestTorchForce(unittest.TestCase):
 
-    def testFreezeGraph(self):
-        graph = tf.Graph()
-        with graph.as_default():
-            positions = tf.placeholder(tf.float32, [None, 3], 'positions')
-            scale = tf.Variable(5.0)
-            energy = tf.multiply(scale, tf.reduce_sum(positions**2), name='energy')
-            forces = tf.identity(tf.gradients(-energy, positions), name='forces')
-            session = tf.Session()
-            session.run(tf.global_variables_initializer())
-        force = nn.TorchForce(graph, session)
+    def testForce(self):
+        # Create a random cloud of particles.
+
+        numParticles = 10
         system = mm.System()
-        for i in range(3):
+        positions = np.random.rand(numParticles, 3)
+        for i in range(numParticles):
             system.addParticle(1.0)
+        force = ot.TorchForce("../../tests/central.pt")
         system.addForce(force)
-        integrator = mm.VerletIntegrator(0.001)
-        context = mm.Context(system, integrator)
-        positions = [mm.Vec3(3, 0, 0), mm.Vec3(0, 4, 0), mm.Vec3(3, 4, 0)]
+
+        # Compute the forces and energy.
+
+        integ = mm.VerletIntegrator(1.0)
+        context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
         context.setPositions(positions)
-        assert context.getState(getEnergy=True).getPotentialEnergy() == 250.0*unit.kilojoules_per_mole
+        state = context.getState(getEnergy=True, getForces=True)
+
+        # See if the energy and forces are correct.  The network defines a potential of the form E(r) = |r|^2
+
+        expectedEnergy = np.sum(positions*positions)
+        assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+        assert np.allclose(-2*positions, state.getForces(asNumpy=True))
 
 
 if __name__ == '__main__':
     unittest.main()
+
