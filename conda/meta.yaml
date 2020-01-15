@@ -1,0 +1,57 @@
+{% set name = "openmm-torch" %}
+{% set version = "0.0" %}
+{% set build = 0 %}
+
+package:
+  name: {{ name }}
+  version: {{ version }}
+
+source:
+  path: ..
+
+build:
+  number: {{ build }}
+  rpaths:
+    - lib/
+    # Note: $PY_VER isn't expanded here
+    - lib/python3.6/site-packages/torch/lib/ # [py==36]
+    - lib/python3.7/site-packages/torch/lib/ # [py==37]
+    - lib/python3.8/site-packages/torch/lib/ # [py==38]
+  script:
+    - cmake $SRC_DIR
+            -DOPENMM_DIR=$BUILD_PREFIX
+            -DPYTORCH_DIR=$BUILD_PREFIX/lib/python$PY_VER/site-packages/torch
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=$PREFIX
+    - make -j $CPU_COUNT
+    - make install
+    - make PythonInstall
+
+requirements:
+  build:
+    - {{ compiler('cxx') }}
+    - {{ cdt('mesa-libgl-devel') }}
+    - cmake
+    - ocl-icd
+    - openmm
+    - python
+    - pytorch
+    - swig
+  run:
+    - ocl-icd
+    - ocl-icd-system
+    - openmm
+    - python
+    - pytorch
+
+test:
+  source_files:
+    - python/tests
+    - tests
+  commands:
+    - test -f $PREFIX/include/TorchForce.h
+    - test -f $PREFIX/lib/libOpenMMTorch$SHLIB_EXT
+    - test -f $PREFIX/lib/plugins/libOpenMMTorchCUDA$SHLIB_EXT
+    - test -f $PREFIX/lib/plugins/libOpenMMTorchOpenCL$SHLIB_EXT
+    - test -f $PREFIX/lib/plugins/libOpenMMTorchReference$SHLIB_EXT
+    - (cd python/tests && python TestTorchForce.py)
