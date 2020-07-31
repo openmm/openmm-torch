@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -57,6 +57,14 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 
     cu.setAsCurrent();
     map<string, string> defines;
+    if (cu.getUseDoublePrecision()) {
+        networkForces.initialize<double>(cu, 3*numParticles, "networkForces");
+        defines["FORCES_TYPE"] = "double";
+    }
+    else {
+        networkForces.initialize<float>(cu, 3*numParticles, "networkForces");
+        defines["FORCES_TYPE"] = "float";
+    }
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
@@ -74,6 +82,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         posData = posTensor.data_ptr<float>();
         boxData = boxTensor.data_ptr<float>();
     }
+    cu.setAsCurrent();
     void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
             &numParticles, cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer()};
     cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
@@ -84,20 +93,21 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     if (includeForces) {
         energyTensor.backward();
         torch::Tensor forceTensor = posTensor.grad();
-        cu.setAsCurrent();
-        void* data;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
-            data = forceTensor.data_ptr<double>();
+            double* data = forceTensor.data_ptr<double>();
+            networkForces.upload(data);
         }
         else {
             if (!(forceTensor.dtype() == torch::kFloat32))
                 forceTensor = forceTensor.to(torch::kFloat32);
-            data = forceTensor.data_ptr<float>();
+            float* data = forceTensor.data_ptr<float>();
+            networkForces.upload(data);
         }
         int paddedNumAtoms = cu.getPaddedNumAtoms();
-        void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
+        cu.setAsCurrent();
+        void* forceArgs[] = {&networkForces.getDevicePointer(), &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
         cu.executeKernel(addForcesKernel, forceArgs, numParticles);
         posTensor.grad().zero_();
     }
