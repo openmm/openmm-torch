@@ -83,7 +83,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
-        torch::Tensor forceTensor = posTensor.grad();
+        torch::Tensor forceTensor = posTensor.grad().clone();
         cu.setAsCurrent();
         void* data;
         if (cu.getUseDoublePrecision()) {
