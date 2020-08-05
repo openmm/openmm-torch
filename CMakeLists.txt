@@ -16,7 +16,7 @@ FIND_PACKAGE(Torch REQUIRED)
 #LINK_DIRECTORIES("${TENSORFLOW_DIR}/lib")
 
 # Specify the C++ version we are building for.
-SET (CMAKE_CXX_STANDARD 11)
+SET (CMAKE_CXX_STANDARD 14)
 
 # Set flags for linking on mac
 IF(APPLE)
