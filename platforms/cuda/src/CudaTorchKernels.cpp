@@ -83,6 +83,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
+        // Note: "forceTensor" needs to be cloned due to a shared context (https://github.com/openmm/openmm-torch/issues/13)
         torch::Tensor forceTensor = posTensor.grad().clone();
         cu.setAsCurrent();
         void* data;
