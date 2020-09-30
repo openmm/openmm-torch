@@ -33,6 +33,7 @@
 #include "CudaTorchKernelSources.h"
 #include "openmm/internal/ContextImpl.h"
 #include <map>
+#include <cuda_runtime_api.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
@@ -85,6 +86,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         energyTensor.backward();
         // Note: "forceTensor" needs to be cloned due to a shared context (https://github.com/openmm/openmm-torch/issues/13)
         torch::Tensor forceTensor = posTensor.grad().clone();
+        // make sure that all calculations on PyTorch side is properly finished before changing CUDA context or starting the `addForcesKernel` of this plugin
+        cudaDeviceSynchronize();
         cu.setAsCurrent();
         void* data;
         if (cu.getUseDoublePrecision()) {
