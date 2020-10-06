@@ -90,6 +90,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
+    // synchronizing the current context before switching to PyTorch
+    CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context");
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
