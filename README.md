@@ -96,6 +96,33 @@ Note that this code assumes a rectangular box.  Applying periodic boundary
 conditions with a triclinic box requires a slightly more complicated
 calculation.
 
+The graph can also take arbitrary scalar arguments that are passed in at
+runtime.  For example, this model multiplies the energy by `scale`, which is
+passed as an argument to `forward()`.
+
+```python
+class ForceModule(torch.nn.Module):
+    def forward(self, positions, scale):
+        return scale*torch.sum(positions**2)
+```
+
+When you create the `TorchForce`, call `addGlobalParameter()` once for each
+extra argument.
+
+```python
+f.addGlobalParameter('scale', 2.0)
+```
+
+This specifies the name of the parameter and its initial value.  The name
+does not need to match the argument to `forward()`.  All global parameters
+are simply passed to the model in the order you define them.  The advantage
+of using global parameters is that you can change their values at any time
+by calling `setParameter()` on the `Context`.
+
+```python
+context.setParameter('scale', 5.0)
+```
+
 License
 =======
 

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -125,6 +125,52 @@ void testPeriodicForce() {
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 }
 
+void testGlobal() {
+    // Create a random cloud of particles.
+
+    const int numParticles = 10;
+    System system;
+    vector<Vec3> positions(numParticles);
+    OpenMM_SFMT::SFMT sfmt;
+    init_gen_rand(0, sfmt);
+    for (int i = 0; i < numParticles; i++) {
+        system.addParticle(1.0);
+        positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
+    }
+    TorchForce* force = new TorchForce("tests/global.pt");
+    force->addGlobalParameter("k", 2.0);
+    system.addForce(force);
+
+    // Compute the forces and energy.
+
+    VerletIntegrator integ(1.0);
+    Platform& platform = Platform::getPlatformByName("OpenCL");
+    Context context(system, integ, platform);
+    context.setPositions(positions);
+    State state = context.getState(State::Energy | State::Forces);
+
+    // See if the energy is correct.  The network defines a potential of the form E(r) = k*|r|^2
+
+    double expectedEnergy = 0;
+    for (int i = 0; i < numParticles; i++) {
+        Vec3 pos = positions[i];
+        double r = sqrt(pos.dot(pos));
+        expectedEnergy += 2*r*r;
+        ASSERT_EQUAL_VEC(pos*(-4.0), state.getForces()[i], 1e-5);
+    }
+    ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
+
+    // Change the global parameter and see if the forces are still correct.
+
+    context.setParameter("k", 3.0);
+    state = context.getState(State::Forces);
+    for (int i = 0; i < numParticles; i++) {
+        Vec3 pos = positions[i];
+        double r = sqrt(pos.dot(pos));
+        ASSERT_EQUAL_VEC(pos*(-6.0), state.getForces()[i], 1e-5);
+    }
+}
+
 int main(int argc, char* argv[]) {
     try {
         registerTorchOpenCLKernelFactories();
@@ -132,6 +178,7 @@ int main(int argc, char* argv[]) {
             Platform::getPlatformByName("OpenCL").setPropertyDefaultValue("Precision", string(argv[1]));
         testForce();
         testPeriodicForce();
+        testGlobal();
     }
     catch(const std::exception& e) {
         std::cout << "exception: " << e.what() << std::endl;
