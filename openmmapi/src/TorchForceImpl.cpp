@@ -62,6 +62,13 @@ double TorchForceImpl::calcForcesAndEnergy(ContextImpl& context, bool includeFor
     return 0.0;
 }
 
+map<string, double> TorchForceImpl::getDefaultParameters() {
+    map<string, double> parameters;
+    for (int i = 0; i < owner.getNumGlobalParameters(); i++)
+        parameters[owner.getGlobalParameterName(i)] = owner.getGlobalParameterDefaultValue(i);
+    return parameters;
+}
+
 std::vector<std::string> TorchForceImpl::getKernelNames() {
     std::vector<std::string> names;
     names.push_back(CalcTorchForceKernel::Name());

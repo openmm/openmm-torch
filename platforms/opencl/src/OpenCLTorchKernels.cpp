@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -44,6 +44,8 @@ OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
 void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    for (int i = 0; i < force.getNumGlobalParameters(); i++)
+        globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
     // Inititalize OpenCL objects.
@@ -78,6 +80,8 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             boxTensor = boxTensor.to(torch::kFloat32);
         inputs.push_back(boxTensor);
     }
+    for (const string& name : globalNames)
+        inputs.push_back(torch::tensor(context.getParameter(name)));
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();

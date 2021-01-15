@@ -60,6 +60,8 @@ ReferenceCalcTorchForceKernel::~ReferenceCalcTorchForceKernel() {
 void ReferenceCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    for (int i = 0; i < force.getNumGlobalParameters(); i++)
+        globalNames.push_back(force.getGlobalParameterName(i));
 }
 
 double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
@@ -73,6 +75,8 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
         inputs.push_back(boxTensor);
     }
+    for (const string& name : globalNames)
+        inputs.push_back(torch::tensor(context.getParameter(name)));
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();

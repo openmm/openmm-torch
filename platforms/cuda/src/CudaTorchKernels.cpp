@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -55,6 +55,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     this->module = module;
     module.to(torch::kCUDA);
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    for (int i = 0; i < force.getNumGlobalParameters(); i++)
+        globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
     torch::TensorOptions options = torch::TensorOptions()
             .device(torch::kCUDA, cu.getDeviceIndex())
@@ -90,6 +92,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
+    for (const string& name : globalNames)
+        inputs.push_back(torch::tensor(context.getParameter(name)));
     // synchronizing the current context before switching to PyTorch
     CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context");
     torch::Tensor energyTensor = module.forward(inputs).toTensor();

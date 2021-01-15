@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -56,4 +56,33 @@ void TorchForce::setUsesPeriodicBoundaryConditions(bool periodic) {
 
 bool TorchForce::usesPeriodicBoundaryConditions() const {
     return usePeriodic;
+}
+
+int TorchForce::addGlobalParameter(const string& name, double defaultValue) {
+    globalParameters.push_back(GlobalParameterInfo(name, defaultValue));
+    return globalParameters.size()-1;
+}
+
+int TorchForce::getNumGlobalParameters() const {
+    return globalParameters.size();
+}
+
+const string& TorchForce::getGlobalParameterName(int index) const {
+    ASSERT_VALID_INDEX(index, globalParameters);
+    return globalParameters[index].name;
+}
+
+void TorchForce::setGlobalParameterName(int index, const string& name) {
+    ASSERT_VALID_INDEX(index, globalParameters);
+    globalParameters[index].name = name;
+}
+
+double TorchForce::getGlobalParameterDefaultValue(int index) const {
+    ASSERT_VALID_INDEX(index, globalParameters);
+    return globalParameters[index].defaultValue;
+}
+
+void TorchForce::setGlobalParameterDefaultValue(int index, double defaultValue) {
+    ASSERT_VALID_INDEX(index, globalParameters);
+    globalParameters[index].defaultValue = defaultValue;
 }
