@@ -23,7 +23,14 @@ level directory of this project as the source directory.
 3. Press "Configure".  (Do not worry if it produces an error message about not being able to find PyTorch.)
 
 4. Set OPENMM_DIR to point to the directory where OpenMM is installed.  This is needed to locate
-the OpenMM header files and libraries.
+the OpenMM header files and libraries.  If you are unsure of what directory this is, the following
+script will print it out.
+
+```
+from simtk.openmm import *
+import os
+print(os.path.dirname(version.openmm_library_path))
+```
 
 5. Set PYTORCH_DIR to point to the directory where you installed the LibTorch.
 
