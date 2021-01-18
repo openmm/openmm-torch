@@ -10,10 +10,24 @@ forces to particles during a simulation.
 Installation
 ============
 
-At present this plugin must be compiled from source.  It uses CMake as its build
-system.  Before compiling you must install LibTorch, which is the PyTorch C++ API,
-by following the instructions at https://pytorch.org.  You can then
-follow these steps.
+Using conda
+-----------
+
+We provide Conda packages for Linux and MacOS via [`conda-forge`](https://conda-forge.org/).
+
+If you don't have it already, install [Miniconda for Python 3](https://docs.conda.io/en/latest/miniconda.html)
+to provide the `conda` package manager.  Then, run:
+
+```
+conda install -c conda-forge openmm-torch
+```
+
+From source
+-----------
+
+This plugin uses CMake as its build system.  Before compiling you must install LibTorch,
+which is the PyTorch C++ API, by following the instructions at https://pytorch.org.
+You can then follow these steps.
 
 1. Create a directory in which to build the plugin.
 
