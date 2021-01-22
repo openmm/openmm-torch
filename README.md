@@ -84,7 +84,7 @@ import torch
 class ForceModule(torch.nn.Module):
     """A central harmonic potential as a static compute graph"""
     def forward(self, positions):
-        """The forward method returns the (1,1) energy tensor computed from the (nparticles,3) positions tensor.
+        """The forward method returns the energy computed from positions.
 
         Parameters
         ----------
@@ -132,7 +132,7 @@ particle position to translate all of them into a single periodic cell:
 class ForceModule(torch.nn.Module):
     """A central harmonic force with periodic boundary conditions"""
     def forward(self, positions, boxvectors):
-        """The forward method returns the (1,1) energy tensor computed from the (nparticles,3) positions tensor.
+        """The forward method returns the energy computed from positions.
 
         Parameters
         ----------
@@ -168,7 +168,7 @@ passed as an argument to `forward()`.
 class ForceModule(torch.nn.Module):
     """A central harmonic force with a user-defined global scale parameter"""
     def forward(self, positions, scale):
-        """The forward method returns the (1,1) energy tensor computed from the (nparticles,3) positions tensor.
+        """The forward method returns the energy computed from positions.
 
         Parameters
         ----------
