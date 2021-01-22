@@ -68,8 +68,8 @@ Exporting a PyTorch model for use in OpenMM
 -------------------------------------------
 
 The first step is to create a PyTorch model defining the calculation to perform.  
-It should take particle positions in nanometers (in the form of a `torch.Tensor` of shape `(nparticles,3)` and precision `torch.float64` as its input,
-and return the potential energy in kJ/mol as a `torch.Tensor` of shape `(1,1)` and precision `torch.float64` as output.  
+It should take particle positions in nanometers (in the form of a `torch.Tensor` of shape `(nparticles,3)` as input,
+and return the potential energy in kJ/mol as a `torch.Scalar` as output.  
 
 The model must then be converted to a [TorchScript](https://pytorch.org/docs/stable/jit.html) module and saved to a file.  
 Converting to TorchScript can usually be done with a single call to [`torch.jit.script()`](https://pytorch.org/docs/stable/generated/torch.jit.script.html#torch.jit.script) or [`torch.jit.trace()`](https://pytorch.org/docs/stable/generated/torch.jit.trace.html#torch.jit.trace),
@@ -88,12 +88,12 @@ class ForceModule(torch.nn.Module):
 
         Parameters
         ----------
-        positions : torch.Tensor with shape (nparticles,3) of type torch.float64
+        positions : torch.Tensor with shape (nparticles,3)
            positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
 
         Returns
         -------
-        potential : torch.Tensor with shape (1,1) of type torch.float64
+        potential : torch.Scalar
            The potential energy (in kJ/mol)
         """
         return torch.sum(positions**2)
@@ -136,14 +136,14 @@ class ForceModule(torch.nn.Module):
 
         Parameters
         ----------
-        positions : torch.Tensor with shape (nparticles,3) of type torch.float64
+        positions : torch.Tensor with shape (nparticles,3)
            positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-        boxvectors : torch.tensor with shape (3,3) of type torch.float64
+        boxvectors : torch.tensor with shape (3,3)
            boxvectors[i,k] is the box vector component k (in nanometers) of box vector i
 
         Returns
         -------
-        potential : torch.Tensor with shape (1,1) of type torch.float64
+        potential : torch.Scalar
            The potential energy (in kJ/mol)
         """
         # Image articles in rectilinear box
@@ -172,16 +172,16 @@ class ForceModule(torch.nn.Module):
 
         Parameters
         ----------
-        positions : torch.Tensor with shape (nparticles,3) of type torch.float64
+        positions : torch.Tensor with shape (nparticles,3)
            positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-        scale : torch.Scalar of type torch.float64
+        scale : torch.Scalar
            A scalar tensor defined by 'TorchForce.addGlobalParameter'.
            Here, it scales the contribution to the potential.
            Note that parameters are passed in the order defined by `TorchForce.addGlobalParameter`, not by name.
 
         Returns
         -------
-        potential : torch.Tensor with shape (1,1) of type torch.float64
+        potential : torch.Scalar
            The potential energy (in kJ/mol)
         """
         return scale*torch.sum(positions**2)
