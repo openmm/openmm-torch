@@ -68,7 +68,7 @@ jobs:
           cd build
 
           SHLIB_EXT=".so"
-          if [[ ${{ matrix.python-version }} == macos-* ]]; then
+          if [[ ${{ matrix.os }} == macos-* ]]; then
             SHLIB_EXT=".dylib"
           fi
 
