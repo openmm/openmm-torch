@@ -1,0 +1,115 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    branches:
+      - "master"
+  schedule:
+    # Nightly tests run on master by default:
+    #   Scheduled workflows run on the latest commit on the default or base branch.
+    #   (from https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule)
+    - cron: "0 0 * * *"
+
+
+jobs:
+  unix:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    env:
+      CCACHE_BASEDIR: "${{ github.workspace }}"
+      CCACHE_DIR: "${{ github.workspace }}/.ccache"
+      CCACHE_COMPRESS: true
+      CCACHE_COMPRESSLEVEL: 6
+      CCACHE_MAXSIZE: 400M
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux CPU/CUDA Python 3.6
+            python-version: "3.6"
+            os: ubuntu-latest
+            cuda-version: "10.0"
+            compilers: conda-forge
+            CMAKE_FLAGS: -DNN_BUILD_CUDA_LIB=ON
+
+          - name: MacOS Intel CPU/OpenCL Python 3.9
+            python-version: "3.9"
+            os: macos-latest
+            cuda-version: ""
+            CMAKE_FLAGS: ""
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: conda-incubator/setup-miniconda@v2
+        name: "Prepare base dependencies"
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: build
+          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          auto-activate-base: false
+
+      - name: "Install CUDA on Ubuntu (if needed)"
+        if: matrix.cuda-version != ''
+        env:
+          CUDA_VERSION: ${{ matrix.cuda-version }}
+        run: source devtools/scripts/install_cuda.sh
+
+      - name: "Set SDK on MacOS (if needed)"
+        if: startsWith(matrix.os, 'macos')
+        run: source devtools/scripts/install_macos_sdk.sh
+
+      - name: "Configure build with CMake"
+        shell: bash -l {0}
+        run: |
+          mkdir build
+          cd build
+
+          cmake .. \
+            -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
+            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_TESTING=ON \
+            -DOPENMM_DIR=${PREFIX} \
+            -DPYTORCH_DIR=${SP_DIR}/torch \
+            -DNN_BUILD_OPENCL_LIB=ON \
+            -DOPENCL_INCLUDE_DIR=${PREFIX}/include \
+            -DOPENCL_LIBRARY=${PREFIX}/lib/libOpenCL${SHLIB_EXT} \
+            ${{ matrix.CMAKE_FLAGS }}
+
+      - name: "Build"
+        shell: bash -l {0}
+        run: |
+          cd build
+          make -j2
+          make -j2 install
+          make -j2 PythonInstall
+
+      - name: "Test"
+        shell: bash -l {0}
+        run: |
+          cd build
+          set +e
+          summary=""
+          exitcode=0
+          for f in Test*; do
+            echo "::group::$f"
+            if [[ $f == *Cuda* || $f == *OpenCL* ]]; then
+              echo "Skipping $f"
+              continue
+            fi
+            echo "Running $f..."
+            ./${f}
+            thisexitcode=$?
+            summary+="\n${f}: "
+            if [[ $thisexitcode == 0 ]]; then summary+="OK"; else summary+="FAILED"; fi
+            ((exitcode+=$thisexitcode))
+            echo "::endgroup::"
+          done
+          echo "-------"
+          echo "Summary"
+          echo "-------"
+          echo -e "${summary}"
+          exit $exitcode

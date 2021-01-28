@@ -1,0 +1,15 @@
+name: build
+channels:
+- conda-forge
+dependencies:
+# build
+- cmake
+- make
+- compilers
+# host
+- python
+- pip
+- swig
+- openmm
+- pytorch-gpu
+- ocl-icd
