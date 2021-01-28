@@ -69,7 +69,7 @@ jobs:
 
           cmake .. \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
-            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
+            -DCMAKE_PREFIX_PATH="${CONDA_PREFIX};${SP_DIR}/torch" \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
             -DOPENMM_DIR=${PREFIX} \
