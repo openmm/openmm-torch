@@ -67,16 +67,21 @@ jobs:
           mkdir build
           cd build
 
+          SHLIB_EXT=".so"
+          if [[ ${{ matrix.python-version }} == macos-* ]]; then
+            SHLIB_EXT=".dylib"
+          fi
+
           cmake .. \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
-            -DCMAKE_PREFIX_PATH="${CONDA_PREFIX};${SP_DIR}/torch" \
+            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
-            -DOPENMM_DIR=${PREFIX} \
-            -DPYTORCH_DIR=${SP_DIR}/torch \
+            -DOPENMM_DIR=${CONDA_PREFIX} \
+            -DPYTORCH_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
             -DNN_BUILD_OPENCL_LIB=ON \
-            -DOPENCL_INCLUDE_DIR=${PREFIX}/include \
-            -DOPENCL_LIBRARY=${PREFIX}/lib/libOpenCL${SHLIB_EXT} \
+            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
             ${{ matrix.CMAKE_FLAGS }}
 
       - name: "Build"
