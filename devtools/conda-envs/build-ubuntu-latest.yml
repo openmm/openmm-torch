@@ -11,6 +11,6 @@ dependencies:
 - pip
 - swig
 - openmm
-- pytorch-gpu
+- pytorch >= 1.5
 - ocl-icd
 - mesa-libgl-devel-cos6-x86_64
