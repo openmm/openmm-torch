@@ -32,7 +32,7 @@ export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}
 export PATH=${CUDA_HOME}/bin:${PATH}
 
 if [[ ! -d /usr/local/cuda ]]; then
-    ln -s $CUDA_HOME /usr/local/cuda
+    sudo ln -s $CUDA_HOME /usr/local/cuda
 fi
 
 echo "CUDA_HOME=${CUDA_HOME}" >> ${GITHUB_ENV}
