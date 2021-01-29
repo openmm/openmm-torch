@@ -13,3 +13,4 @@ dependencies:
 - openmm
 - pytorch-gpu
 - ocl-icd
+- mesa-libgl-devel-cos6-x86_64
