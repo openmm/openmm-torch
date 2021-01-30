@@ -42,6 +42,7 @@ jobs:
             os: macos-latest
             cuda-version: ""
             CMAKE_FLAGS: ""
+
     steps:
       - uses: actions/checkout@v2
 
@@ -81,9 +82,8 @@ jobs:
             SHLIB_EXT=".dylib"
           fi
 
-          cmake .. \
+          cmake .. ${CMAKE_ARGS} \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
-            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_TESTING=ON \
             -DOPENMM_DIR=${CONDA_PREFIX} \
