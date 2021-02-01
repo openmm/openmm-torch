@@ -142,3 +142,28 @@ jobs:
           echo "-------"
           echo -e "${summary}"
           exit $exitcode
+
+  debug:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: conda-incubator/setup-miniconda@v2
+        name: "Prepare base dependencies"
+        with:
+          auto-activate-base: true
+          channels: conda-forge
+
+      - name: "Install OpenMM"
+        shell: bash -l {0}
+        run: |
+          conda install openmm
+
+      - name: "Test OpenMM"
+        shell: bash -l {0}
+        run: |
+          set +e
+          python -m simtk.testInstallation
+          python -c "import simtk.openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
