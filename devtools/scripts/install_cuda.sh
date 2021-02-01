@@ -27,14 +27,16 @@ sudo apt-get install -y \
     cuda-nvprof-${CUDA_APT}
 sudo apt-get clean
 
-export CUDA_HOME=/usr/local/cuda-${CUDA_VERSION}
+if [[ ! -d /usr/local/cuda ]]; then
+    sudo ln -s /usr/local/cuda-${CUDA_VERSION} /usr/local/cuda
+fi
+
+export CUDA_HOME=/usr/local/cuda
+export CUDA_PATH=/usr/local/cuda
 export LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH:-}
 export PATH=${CUDA_HOME}/bin:${PATH}
 
-if [[ ! -d /usr/local/cuda ]]; then
-    sudo ln -s $CUDA_HOME /usr/local/cuda
-fi
-
 echo "CUDA_HOME=${CUDA_HOME}" >> ${GITHUB_ENV}
+echo "CUDA_PATH=${CUDA_PATH}" >> ${GITHUB_ENV}
 echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ${GITHUB_ENV}
 echo "PATH=${PATH}" >> ${GITHUB_ENV}
