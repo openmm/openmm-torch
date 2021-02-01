@@ -108,7 +108,10 @@ jobs:
       - name: "Debug platforms"
         shell: bash -l {0}
         run: |
+          set +e
           python -m simtk.testInstallation
+          python -c "import simtk.openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
+
 
       - name: "Test"
         shell: bash -l {0}
