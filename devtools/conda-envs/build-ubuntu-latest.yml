@@ -20,6 +20,7 @@ dependencies:
 - swig
 - openmm
 - pytorch >=1.7
+- pytorch-gpu >=1.7
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@
 - pocl
