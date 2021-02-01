@@ -11,6 +11,6 @@ dependencies:
 - pip
 - swig
 - openmm
-- pytorch-cpu >= 1.5
+- pytorch-cpu >= 1.7
 - khronos-opencl-icd-loader
 - pocl
