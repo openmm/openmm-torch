@@ -1,3 +1,7 @@
+[![GH Actions Status](https://github.com/openmm/openmm-torch/workflows/CI/badge.svg)](https://github.com/openmm/openmm-torch/actions?query=branch%3Amaster+workflow%3ACI)
+[![Conda](https://img.shields.io/conda/v/conda-forge/openmm-torch.svg)](https://anaconda.org/conda-forge/openmm-torch)
+[![Anaconda Cloud Badge](https://anaconda.org/conda-forge/openmm-torch/badges/downloads.svg)](https://anaconda.org/conda-forge/openmm-torch)
+
 OpenMM PyTorch Plugin
 =====================
 
