@@ -24,7 +24,7 @@ sudo apt-get install -y \
     cuda-drivers cuda-driver-dev-${CUDA_APT} \
     cuda-cudart-${CUDA_APT} cuda-cudart-dev-${CUDA_APT} \
     ${CUFFT}-${CUDA_APT} ${CUFFT}-dev-${CUDA_APT} \
-    cuda-nvprof-${CUDA_APT}
+    cuda-nvprof-${CUDA_APT} tree
 sudo apt-get clean
 
 if [[ ! -d /usr/local/cuda ]]; then
@@ -35,6 +35,8 @@ export CUDA_HOME=/usr/local/cuda
 export CUDA_PATH=/usr/local/cuda
 export LD_LIBRARY_PATH=${CUDA_HOME}/lib64/stubs:${LD_LIBRARY_PATH:-}
 export PATH=${CUDA_HOME}/bin:${PATH}
+
+tree $CUDA_HOME
 
 echo "CUDA_HOME=${CUDA_HOME}" >> ${GITHUB_ENV}
 echo "CUDA_PATH=${CUDA_PATH}" >> ${GITHUB_ENV}

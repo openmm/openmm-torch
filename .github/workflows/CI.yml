@@ -31,7 +31,7 @@ jobs:
           - name: Linux CPU/CUDA Python 3.6
             python-version: "3.6"
             os: ubuntu-latest
-            gcc-version: "7"
+            gcc-version: "9"
             cuda-version: "10.0"
             cdt-name: cos6  # cuda 11+ requires cos7
             CMAKE_FLAGS: |
@@ -94,7 +94,6 @@ jobs:
           cmake .. ${CMAKE_ARGS} \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
             -DCMAKE_BUILD_TYPE=Release \
-            -DBUILD_TESTING=ON \
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DPYTORCH_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
             -DNN_BUILD_OPENCL_LIB=ON \
@@ -106,7 +105,6 @@ jobs:
         shell: bash -l {0}
         run: |
           cd build
-          make -j2
           make -j2 install
           make -j2 PythonInstall
 
