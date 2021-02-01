@@ -23,4 +23,4 @@ dependencies:
 - pytorch-gpu >=1.7
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@
-- oclgrind
+- pocl
