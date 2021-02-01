@@ -37,14 +37,14 @@ jobs:
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
-              -DCMAKE_PREFIX_PATH=${CONDA_PREFIX}:${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch:${CUDA_HOME}/lib64/stubs
+              -DCMAKE_PREFIX_PATH=${CONDA_PREFIX}:${CONDA_PREFIX}/lib/python3.6/site-packages/torch:${CUDA_HOME}/lib64/stubs
 
-          - name: MacOS Intel CPU/OpenCL Python 3.9
-            python-version: "3.9"
+          - name: MacOS Intel CPU/OpenCL Python 3.6
+            python-version: "3.6"
             os: macos-latest
             cuda-version: ""
             CMAKE_FLAGS: |
-              -DCMAKE_PREFIX_PATH=${CONDA_PREFIX}:${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch
+              -DCMAKE_PREFIX_PATH=${CONDA_PREFIX}:${CONDA_PREFIX}/lib/python3.6/site-packages/torch
 
     steps:
       - uses: actions/checkout@v2
