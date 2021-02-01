@@ -29,7 +29,6 @@ jobs:
             cuda-version: "10.0"
             cdt-name: cos6  # cuda 11+ requires cos7
             CMAKE_FLAGS: |
-              -DNN_BUILD_OPENCL_LIB=OFF \
               -DNN_BUILD_CUDA_LIB=ON \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
@@ -38,10 +37,8 @@ jobs:
             python-version: "3.9"
             os: macos-latest
             cuda-version: ""
-            CMAKE_FLAGS: |
-              -DNN_BUILD_OPENCL_LIB=ON \
-              -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
-              -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
+            CMAKE_FLAGS: ""
+
 
     steps:
       - uses: actions/checkout@v2
@@ -97,6 +94,9 @@ jobs:
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DPYTORCH_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
+            -DNN_BUILD_OPENCL_LIB=ON \
+            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
             ${{ matrix.CMAKE_FLAGS }}
 
       - name: "Build"
