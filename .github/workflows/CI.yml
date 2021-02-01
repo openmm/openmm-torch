@@ -121,14 +121,15 @@ jobs:
           exitcode=0
           for f in Test*; do
             echo "::group::$f"
+            summary+="\n${f}: "
             if [[ $f == *Cuda* || $f == *OpenCL* ]]; then
-              echo "Skipping $f"
+              echo "Skipping $f..."
+              summary+="Skipped"
               continue
             fi
             echo "Running $f..."
             ./${f}
             thisexitcode=$?
-            summary+="\n${f}: "
             if [[ $thisexitcode == 0 ]]; then summary+="OK"; else summary+="FAILED"; fi
             ((exitcode+=$thisexitcode))
             echo "::endgroup::"
