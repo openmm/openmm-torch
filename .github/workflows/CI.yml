@@ -36,7 +36,9 @@ jobs:
             cdt-name: cos6  # cuda 11+ requires cos7
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
-              -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda
+              -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+              -DCMAKE_LIBRARY_PATH=/usr/local/cuda/lib64/stubs \
+              -DCUDA_CUDA_LIBRARY=/usr/local/cuda/lib64/stubs/libcuda.so
 
           - name: MacOS Intel CPU/OpenCL Python 3.9
             python-version: "3.9"
