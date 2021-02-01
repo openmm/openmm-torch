@@ -86,7 +86,7 @@ jobs:
             SHLIB_EXT=".dylib"
           fi
 
-          cmake .. ${CMAKE_ARGS} \
+          cmake .. \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
             -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
             -DCMAKE_BUILD_TYPE=Release \
