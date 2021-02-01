@@ -29,14 +29,13 @@ sudo apt-get clean
 
 if [[ ! -d /usr/local/cuda ]]; then
     sudo ln -s /usr/local/cuda-${CUDA_VERSION} /usr/local/cuda
+    sudo ln -s /usr/local/cuda-${CUDA_VERSION}/lib/stubs/libcuda.so /usr/local/cuda-${CUDA_VERSION}/lib/stubs/libcuda.so.1
 fi
 
 export CUDA_HOME=/usr/local/cuda
 export CUDA_PATH=/usr/local/cuda
-export LD_LIBRARY_PATH=${CUDA_HOME}/lib64/stubs:${LD_LIBRARY_PATH:-}
+export LD_LIBRARY_PATH=${CUDA_HOME}/lib/stubs:${LD_LIBRARY_PATH:-}
 export PATH=${CUDA_HOME}/bin:${PATH}
-
-tree $CUDA_HOME
 
 echo "CUDA_HOME=${CUDA_HOME}" >> ${GITHUB_ENV}
 echo "CUDA_PATH=${CUDA_PATH}" >> ${GITHUB_ENV}

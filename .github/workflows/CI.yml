@@ -93,9 +93,11 @@ jobs:
 
           cmake .. ${CMAKE_ARGS} \
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
+            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX}:${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
             -DCMAKE_BUILD_TYPE=Release \
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DPYTORCH_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
+            -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
             -DNN_BUILD_OPENCL_LIB=ON \
             -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
             -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
