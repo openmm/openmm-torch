@@ -35,6 +35,9 @@ if [[ -f /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so ]]; then
     sudo ln -s /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so.1
 fi
 
+# Remove Nvidia's OpenCL
+sudo rm -rf /usr/local/cuda-${CUDA_VERSION}/lib64/libOpenCL.* /usr/local/cuda-${CUDA_VERSION}/include/CL /etc/OpenCL/vendors/nvidia.icd
+
 export CUDA_HOME="/usr/local/cuda"
 export CUDA_PATH="/usr/local/cuda"
 export PATH="${CUDA_HOME}/bin:${PATH}"
