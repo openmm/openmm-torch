@@ -22,3 +22,4 @@ dependencies:
 - pytorch >= 1.5
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@
+- pocl

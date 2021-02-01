@@ -115,7 +115,7 @@ jobs:
           for f in Test*; do
             echo "::group::$f"
             summary+="\n${f}: "
-            if [[ $f == *Cuda* || $f == *OpenCL* ]]; then
+            if [[ $f == *Cuda* ]]; then
               echo "Skipping $f..."
               summary+="Skipped"
               echo "::endgroup::"

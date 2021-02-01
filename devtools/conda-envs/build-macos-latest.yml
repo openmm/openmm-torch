@@ -13,3 +13,4 @@ dependencies:
 - openmm
 - pytorch-cpu >= 1.5
 - khronos-opencl-icd-loader
+- pocl
