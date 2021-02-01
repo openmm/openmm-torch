@@ -7,12 +7,12 @@ dependencies:
 - make
 - gcc_linux-64 7.*
 - gxx_linux-64 7.*
-- libx11-common-cos6-x86_64
-- libx11-cos6-x86_64
-- mesa-dri-drivers-cos6-x86_64
-- mesa-dri1-drivers-cos6-x86_64
-- mesa-libgl-cos6-x86_64
-- mesa-libgl-devel-cos6-x86_64
+- libx11-common-@CDT_NAME@-x86_64
+- libx11-@CDT_NAME@-x86_64
+- mesa-dri-drivers-@CDT_NAME@-x86_64
+- mesa-dri1-drivers-@CDT_NAME@-x86_64
+- mesa-libgl-@CDT_NAME@-x86_64
+- mesa-libgl-devel-@CDT_NAME@-x86_64
 # host
 - python
 - pip
@@ -20,3 +20,4 @@ dependencies:
 - openmm
 - pytorch >= 1.5
 - ocl-icd
+- cudatoolkit @CUDATOOLKIT_VERSION@
