@@ -35,10 +35,16 @@ if [[ -f /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so ]]; then
     sudo ln -s /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so /usr/local/cuda-${CUDA_VERSION}/lib64/stubs/libcuda.so.1
 fi
 
-export CUDA_HOME=/usr/local/cuda
-export CUDA_PATH=/usr/local/cuda
-export PATH=${CUDA_HOME}/bin:${PATH}
+export CUDA_HOME="/usr/local/cuda"
+export CUDA_PATH="/usr/local/cuda"
+export PATH="${CUDA_HOME}/bin:${PATH}"
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64/stubs"
+export LIBRARY_PATH="/usr/local/cuda/lib64/stubs"
+export LDFLAGS="-L/usr/local/cuda/lib64/stubs"
 
 echo "CUDA_HOME=${CUDA_HOME}" >> ${GITHUB_ENV}
 echo "CUDA_PATH=${CUDA_PATH}" >> ${GITHUB_ENV}
 echo "PATH=${PATH}" >> ${GITHUB_ENV}
+echo "LD_LIBRARY_PATH=${LD_LIBRARY_PATH}" >> ${GITHUB_ENV}
+echo "LIBRARY_PATH=${LIBRARY_PATH}" >> ${GITHUB_ENV}
+echo "LDFLAGS=${LDFLAGS}" >> ${GITHUB_ENV}
