@@ -105,6 +105,11 @@ jobs:
           make -j2 install
           make -j2 PythonInstall
 
+      - name: "Debug platforms"
+        shell: bash -l {0}
+        run: |
+          python -m simtk.testInstallation
+
       - name: "Test"
         shell: bash -l {0}
         run: |
