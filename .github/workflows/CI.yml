@@ -31,6 +31,7 @@ jobs:
           - name: Linux CPU/CUDA Python 3.6
             python-version: "3.6"
             os: ubuntu-latest
+            gcc-version: "7"
             cuda-version: "10.0"
             cdt-name: cos6  # cuda 11+ requires cos7
             CMAKE_FLAGS: |
@@ -50,6 +51,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sed -i -e "s/@CDT_NAME@/${{ matrix.cdt-name }}/g" \
+                 -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}.*/g" \
                  -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}.*/g" \
                  devtools/conda-envs/build-${{ matrix.os }}.yml
 
@@ -62,12 +64,6 @@ jobs:
           auto-activate-base: false
           channels: conda-forge
 
-      - name: "Conda info"
-        shell: bash -l {0}
-        run: |
-          conda info -a
-          conda list
-
       - name: "Install CUDA on Ubuntu (if needed)"
         if: matrix.cuda-version != ''
         env:
@@ -77,6 +73,12 @@ jobs:
       - name: "Set SDK on MacOS (if needed)"
         if: startsWith(matrix.os, 'macos')
         run: source devtools/scripts/install_macos_sdk.sh
+
+      - name: "Conda info"
+        shell: bash -l {0}
+        run: |
+          conda info -a
+          conda list
 
       - name: "Configure build with CMake"
         shell: bash -l {0}

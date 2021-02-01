@@ -5,9 +5,9 @@ dependencies:
 # build
 - cmake
 - make
-- gcc_linux-64 7.*
-- gxx_linux-64 7.*
-- nvcc_linux-64
+- gcc_linux-64 @GCC_VERSION@
+- gxx_linux-64 @GCC_VERSION@
+- nvcc_linux-64 @CUDATOOLKIT_VERSION@
 - libx11-common-@CDT_NAME@-x86_64
 - libx11-@CDT_NAME@-x86_64
 - mesa-dri-drivers-@CDT_NAME@-x86_64
