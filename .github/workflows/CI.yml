@@ -31,7 +31,7 @@ jobs:
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
-              -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
+              -DEXTRA_LINK_FLAGS_CUDA="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
           - name: MacOS Intel CPU Python 3.9
             python-version: "3.9"
