@@ -18,7 +18,7 @@ dependencies:
 - python
 - pip
 - swig
-- openmm
+- openmm * *_4
 - pytorch >=1.7
 - pytorch-gpu >=1.7
 - ocl-icd
