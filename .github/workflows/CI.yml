@@ -145,5 +145,5 @@ jobs:
       - name: "Test Python"
         shell: bash -l {0}
         run: |
-          cd build/python
-          pytest -v
+          cd python/tests
+          python -m pytest -v Test*
