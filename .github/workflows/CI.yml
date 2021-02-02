@@ -1,0 +1,150 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    branches:
+      - "master"
+  schedule:
+    # Nightly tests run on master by default:
+    #   Scheduled workflows run on the latest commit on the default or base branch.
+    #   (from https://help.github.com/en/actions/reference/events-that-trigger-workflows#scheduled-events-schedule)
+    - cron: "0 0 * * *"
+
+
+jobs:
+  unix:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Linux CPU CUDA 10.0 Python 3.6
+            python-version: "3.6"
+            os: ubuntu-latest
+            gcc-version: "9"
+            cuda-version: "10.0"
+            cdt-name: cos6  # cuda 11+ requires cos7
+            CMAKE_FLAGS: |
+              -DNN_BUILD_CUDA_LIB=ON \
+              -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
+              -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
+
+          - name: MacOS Intel CPU Python 3.9
+            python-version: "3.9"
+            os: macos-latest
+            cuda-version: ""
+            CMAKE_FLAGS: ""
+
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: "Patch conda env (if needed)"
+        if: startsWith(matrix.os, 'ubuntu')
+        run: |
+          sed -i -e "s/@CDT_NAME@/${{ matrix.cdt-name }}/g" \
+                 -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}.*/g" \
+                 -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}.*/g" \
+                 devtools/conda-envs/build-${{ matrix.os }}.yml
+
+      - uses: conda-incubator/setup-miniconda@v2
+        name: "Prepare base dependencies"
+        with:
+          python-version: ${{ matrix.python-version }}
+          activate-environment: build
+          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          auto-activate-base: false
+          channels: conda-forge
+
+      - name: "Install CUDA on Ubuntu (if needed)"
+        if: matrix.cuda-version != ''
+        env:
+          CUDA_VERSION: ${{ matrix.cuda-version }}
+        run: source devtools/scripts/install_cuda.sh
+
+      - name: "Set SDK on MacOS (if needed)"
+        if: startsWith(matrix.os, 'macos')
+        run: source devtools/scripts/install_macos_sdk.sh
+
+      - name: "Conda info"
+        shell: bash -l {0}
+        run: |
+          conda info -a
+          conda list
+
+      - name: "Configure build with CMake"
+        shell: bash -l {0}
+        run: |
+          mkdir build
+          cd build
+
+          SHLIB_EXT=".so"
+          if [[ ${{ matrix.os }} == macos-* ]]; then
+            SHLIB_EXT=".dylib"
+          fi
+
+          cmake .. \
+            -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
+            -DCMAKE_PREFIX_PATH=${CONDA_PREFIX} \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DOPENMM_DIR=${CONDA_PREFIX} \
+            -DPYTORCH_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch \
+            -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
+            -DNN_BUILD_OPENCL_LIB=ON \
+            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
+            ${{ matrix.CMAKE_FLAGS }}
+
+      - name: "Build"
+        shell: bash -l {0}
+        run: |
+          cd build
+          make -j2 install
+          make -j2 PythonInstall
+
+      - name: "Plugin information"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          python -c "import simtk.openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
+
+      - name: "Test C++"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          cd build
+          set +e
+          summary=""
+          exitcode=0
+          for f in Test*; do
+            echo "::group::$f"
+            summary+="\n${f}: "
+            if [[ $f == *Cuda* ]]; then
+              echo "Skipping $f..."
+              summary+="Skipped"
+              echo "::endgroup::"
+              continue
+            fi
+            echo "Running $f..."
+            ./${f}
+            thisexitcode=$?
+            if [[ $thisexitcode == 0 ]]; then summary+="OK"; else summary+="FAILED"; fi
+            ((exitcode+=$thisexitcode))
+            echo "::endgroup::"
+          done
+          echo "-------"
+          echo "Summary"
+          echo "-------"
+          echo -e "${summary}"
+          exit $exitcode
+
+      - name: "Test Python"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          cd python/tests
+          python -m pytest -v Test*

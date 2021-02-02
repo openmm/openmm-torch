@@ -1,0 +1,27 @@
+name: build
+channels:
+- conda-forge
+dependencies:
+# build
+- cmake
+- make
+- gcc_linux-64 @GCC_VERSION@
+- gxx_linux-64 @GCC_VERSION@
+- nvcc_linux-64 @CUDATOOLKIT_VERSION@
+- libx11-common-@CDT_NAME@-x86_64
+- libx11-@CDT_NAME@-x86_64
+- mesa-dri-drivers-@CDT_NAME@-x86_64
+- mesa-dri1-drivers-@CDT_NAME@-x86_64
+- mesa-libgl-@CDT_NAME@-x86_64
+- mesa-libgl-devel-@CDT_NAME@-x86_64
+# host
+- python
+- pip
+- swig
+- openmm
+- pytorch >=1.7 cuda*
+- ocl-icd
+- cudatoolkit @CUDATOOLKIT_VERSION@
+- pocl
+# test
+- pytest
