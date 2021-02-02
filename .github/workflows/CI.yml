@@ -112,7 +112,7 @@ jobs:
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch:${LD_LIBRARY_PATH}"
           python -c "import simtk.openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
 
-      - name: "Test"
+      - name: "Test C++"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch:${LD_LIBRARY_PATH}"
@@ -141,3 +141,9 @@ jobs:
           echo "-------"
           echo -e "${summary}"
           exit $exitcode
+
+      - name: "Test Python"
+        shell: bash -l {0}
+        run: |
+          cd build/python
+          pytest -v

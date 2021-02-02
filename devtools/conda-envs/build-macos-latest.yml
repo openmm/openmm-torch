@@ -14,3 +14,5 @@ dependencies:
 - pytorch-cpu >=1.7
 - khronos-opencl-icd-loader
 - pocl
+# test
+- pytest

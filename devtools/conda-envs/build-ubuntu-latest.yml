@@ -23,3 +23,5 @@ dependencies:
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@
 - pocl
+# test
+- pytest
