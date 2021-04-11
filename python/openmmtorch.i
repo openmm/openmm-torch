@@ -33,6 +33,12 @@ public:
     const std::string& getFile() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
     bool usesPeriodicBoundaryConditions() const;
+    int getNumGlobalParameters() const;
+    int addGlobalParameter(const std::string& name, double defaultValue);
+    const std::string& getGlobalParameterName(int index) const;
+    void setGlobalParameterName(int index, const std::string& name);
+    double getGlobalParameterDefaultValue(int index) const;
+    void setGlobalParameterDefaultValue(int index, double defaultValue);
 
     /*
      * Add methods for casting a Force to a TorchForce.
