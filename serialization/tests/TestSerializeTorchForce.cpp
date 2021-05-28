@@ -46,6 +46,10 @@ void testSerialization() {
     // Create a Force.
 
     TorchForce force("module.pt");
+    force.setForceGroup(3);
+    force.addGlobalParameter("x", 1.3);
+    force.addGlobalParameter("y", 2.221);
+    force.setUsesPeriodicBoundaryConditions(true);
 
     // Serialize and then deserialize it.
 
@@ -57,6 +61,13 @@ void testSerialization() {
 
     TorchForce& force2 = *copy;
     ASSERT_EQUAL(force.getFile(), force2.getFile());
+    ASSERT_EQUAL(force.getForceGroup(), force2.getForceGroup());
+    ASSERT_EQUAL(force.getNumGlobalParameters(), force2.getNumGlobalParameters());
+    for (int i = 0; i < force.getNumGlobalParameters(); i++) {
+        ASSERT_EQUAL(force.getGlobalParameterName(i), force2.getGlobalParameterName(i));
+        ASSERT_EQUAL(force.getGlobalParameterDefaultValue(i), force2.getGlobalParameterDefaultValue(i));
+    }
+    ASSERT_EQUAL(force.usesPeriodicBoundaryConditions(), force2.usesPeriodicBoundaryConditions());
 }
 
 int main() {
