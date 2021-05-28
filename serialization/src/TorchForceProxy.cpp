@@ -45,11 +45,26 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     node.setIntProperty("version", 1);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
+    node.setIntProperty("forceGroup", force.getForceGroup());
+    node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
+    SerializationNode& globalParams = node.createChildNode("GlobalParameters");
+    for (int i = 0; i < force.getNumGlobalParameters(); i++) {
+        globalParams.createChildNode("Parameter").setStringProperty("name", force.getGlobalParameterName(i)).setDoubleProperty("default", force.getGlobalParameterDefaultValue(i));
+    }
 }
 
 void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     if (node.getIntProperty("version") != 1)
         throw OpenMMException("Unsupported version number");
     TorchForce* force = new TorchForce(node.getStringProperty("file"));
+    if (node.hasProperty("forceGroup"))
+        force->setForceGroup(node.getIntProperty("forceGroup", 0));
+    if (node.hasProperty("usesPeriodic"))
+        force->setUsesPeriodicBoundaryConditions(node.getBoolProperty("usesPeriodic"));
+    for (const SerializationNode& child : node.getChildren()) {
+        if (child.getName() == "GlobalParameters")
+            for (auto& parameter : child.getChildren())
+                force->addGlobalParameter(parameter.getStringProperty("name"), parameter.getDoubleProperty("default"));
+    }
     return force;
 }
