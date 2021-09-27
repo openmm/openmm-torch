@@ -86,7 +86,7 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         double* outputForces = forceTensor.data_ptr<double>();
         for (int i = 0; i < numParticles; i++)
             for (int j = 0; j < 3; j++)
-                force[i][j] = -outputForces[3*i+j];
+                force[i][j] -= outputForces[3*i+j];
     }
     return energyTensor.item<double>();
 }
