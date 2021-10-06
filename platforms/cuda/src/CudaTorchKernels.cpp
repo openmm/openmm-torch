@@ -54,11 +54,13 @@ CudaCalcTorchForceKernel::~CudaCalcTorchForceKernel() {
 
 void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
-    module.to(torch::kCUDA);
     usePeriodic = force.usesPeriodicBoundaryConditions();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
+
+    // Initialize CUDA object for PyTorch
+    module.to(torch::kCUDA); // This implicitly initialize PyTorch
     torch::TensorOptions options = torch::TensorOptions()
             .device(torch::kCUDA, cu.getDeviceIndex())
             .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32)
@@ -66,8 +68,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     posTensor = torch::empty({numParticles, 3}, options);
     boxTensor = torch::empty({3, 3}, options);
 
-    // Inititalize CUDA objects.
-
+    // Initialize CUDA objects for OpenMM-Torch
     ContextSelector selector(cu);
     map<string, string> defines;
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
@@ -92,23 +93,18 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
                 &numParticles, cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer()};
         cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
+        CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
     }
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
     for (const string& name : globalNames)
         inputs.push_back(torch::tensor(context.getParameter(name)));
-    // synchronizing the current context before switching to PyTorch
-    CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context");
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
         // Note: "forceTensor" needs to be cloned due to a shared context (https://github.com/openmm/openmm-torch/issues/13)
         torch::Tensor forceTensor = posTensor.grad().clone();
-        // make sure that all calculations on PyTorch side is properly finished before changing CUDA context or starting the `addForcesKernel` of this plugin
-        // cudaDeviceSynchronize();  // synchronizing the whole device is not necessary and may even cause problem
-        // synchronizing the current context and check the return status
-        CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context");
         void* data;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
@@ -121,6 +117,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             data = forceTensor.data_ptr<float>();
         }
         int paddedNumAtoms = cu.getPaddedNumAtoms();
+        CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
         {
             ContextSelector selector(cu);
             void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
@@ -128,5 +125,5 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         }
         posTensor.grad().zero_();
     }
-    return energyTensor.item<double>();
+    return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
 }
