@@ -103,8 +103,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     torch::Tensor energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         energyTensor.backward();
-        // Note: "forceTensor" needs to be cloned due to a shared context (https://github.com/openmm/openmm-torch/issues/13)
-        torch::Tensor forceTensor = posTensor.grad().clone();
+        torch::Tensor forceTensor = posTensor.grad();
         void* data;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
@@ -122,6 +121,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             ContextSelector selector(cu);
             void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
+            CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
         posTensor.grad().zero_();
     }
