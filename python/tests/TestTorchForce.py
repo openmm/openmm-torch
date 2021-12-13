@@ -38,6 +38,11 @@ class TestTorchForce(unittest.TestCase):
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
 def testModuleArguments(deviceString, precision):
 
+    if pt.cuda.device_count() < 1 and deviceString == 'cuda:0':
+        pytest.skip('A CUDA device is not available')
+    if pt.cuda.device_count() < 2 and deviceString == 'cuda:1':
+        pytest.skip('Two CUDA devices are not available')
+
     class TestModule(pt.nn.Module):
 
         def __init__(self, device, dtype, positions):
