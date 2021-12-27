@@ -59,7 +59,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
-    // Initialize CUDA object for PyTorch
+    // Initialize CUDA objects for PyTorch
     module.to(torch::kCUDA); // This implicitly initialize PyTorch
     torch::TensorOptions options = torch::TensorOptions()
             .device(torch::kCUDA, cu.getDeviceIndex())
