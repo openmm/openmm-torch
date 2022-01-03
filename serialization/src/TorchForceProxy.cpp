@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -47,6 +47,7 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     node.setStringProperty("file", force.getFile());
     node.setIntProperty("forceGroup", force.getForceGroup());
     node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
+    node.setBoolProperty("outputsForces", force.getOutputsForces());
     SerializationNode& globalParams = node.createChildNode("GlobalParameters");
     for (int i = 0; i < force.getNumGlobalParameters(); i++) {
         globalParams.createChildNode("Parameter").setStringProperty("name", force.getGlobalParameterName(i)).setDoubleProperty("default", force.getGlobalParameterDefaultValue(i));
@@ -61,6 +62,8 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
         force->setForceGroup(node.getIntProperty("forceGroup", 0));
     if (node.hasProperty("usesPeriodic"))
         force->setUsesPeriodicBoundaryConditions(node.getBoolProperty("usesPeriodic"));
+    if (node.hasProperty("outputsForces"))
+        force->setOutputsForces(node.getBoolProperty("outputsForces"));
     for (const SerializationNode& child : node.getChildren()) {
         if (child.getName() == "GlobalParameters")
             for (auto& parameter : child.getChildren())

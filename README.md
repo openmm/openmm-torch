@@ -207,6 +207,46 @@ by calling `setParameter()` on the `Context`.
 context.setParameter('scale', 5.0)
 ```
 
+Computing forces in the model
+-----------------------------
+
+In the examples above, the PyTorch model computes the potential energy.  Backpropagation
+can be used to compute the corresponding forces.  That always works, but sometimes you
+may have a more efficient way to compute the forces than the generic backpropagation
+algorithm.  In that case, you can have the model directly compute forces as well as
+energy, returning both of them in a tuple.  Remember that the force is the *negative*
+gradient of the energy.
+
+```python
+import torch
+
+class ForceModule(torch.nn.Module):
+    """A central harmonic potential that computes both energy and forces."""
+    def forward(self, positions):
+        """The forward method returns the energy and forces computed from positions.
+
+        Parameters
+        ----------
+        positions : torch.Tensor with shape (nparticles,3)
+           positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
+
+        Returns
+        -------
+        potential : torch.Scalar
+           The potential energy (in kJ/mol)
+        forces : torch.Tensor with shape (nparticles,3)
+           The force (in kJ/mol/nm) on each particle
+        """
+        return (torch.sum(positions**2), -2*positions)
+```
+
+When you create the `TorchForce`, call `setOutputsForces()` to tell it to expect the model
+to return forces.
+
+```python
+torch_force.setOutputsForces(True)
+```
+
 License
 =======
 

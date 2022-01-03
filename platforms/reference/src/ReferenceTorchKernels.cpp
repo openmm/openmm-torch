@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -60,6 +60,7 @@ ReferenceCalcTorchForceKernel::~ReferenceCalcTorchForceKernel() {
 void ReferenceCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
 }
@@ -77,16 +78,26 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
     }
     for (const string& name : globalNames)
         inputs.push_back(torch::tensor(context.getParameter(name)));
-    torch::Tensor energyTensor = module.forward(inputs).toTensor();
+    torch::Tensor energyTensor, forceTensor;
+    if (outputsForces) {
+        auto outputs = module.forward(inputs).toTuple();
+        energyTensor = outputs->elements()[0].toTensor();
+        forceTensor = outputs->elements()[1].toTensor();
+    }
+    else
+        energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
-        energyTensor.backward();
-        torch::Tensor forceTensor = posTensor.grad();
+        if (!outputsForces) {
+            energyTensor.backward();
+            forceTensor = posTensor.grad();
+        }
         if (!(forceTensor.dtype() == torch::kFloat64))
             forceTensor = forceTensor.to(torch::kFloat64);
         double* outputForces = forceTensor.data_ptr<double>();
+        double forceSign = (outputsForces ? 1.0 : -1.0);
         for (int i = 0; i < numParticles; i++)
             for (int j = 0; j < 3; j++)
-                force[i][j] -= outputForces[3*i+j];
+                force[i][j] += forceSign*outputForces[3*i+j];
     }
     return energyTensor.item<double>();
 }
