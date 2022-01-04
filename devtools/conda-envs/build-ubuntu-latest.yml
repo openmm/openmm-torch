@@ -18,7 +18,7 @@ dependencies:
 - python
 - pip
 - swig
-- openmm
+- openmm >=7.7
 - pytorch >=1.7 cuda*
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@

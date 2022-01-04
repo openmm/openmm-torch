@@ -22,11 +22,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux CPU CUDA 10.0 Python 3.6
-            python-version: "3.6"
+          - name: Linux CPU CUDA 10.2 Python 3.7
+            python-version: "3.7"
             os: ubuntu-latest
             gcc-version: "9"
-            cuda-version: "10.0"
+            cuda-version: "10.2"
             cdt-name: cos6  # cuda 11+ requires cos7
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \

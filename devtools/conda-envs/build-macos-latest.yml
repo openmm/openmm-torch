@@ -10,7 +10,7 @@ dependencies:
 - python
 - pip
 - swig
-- openmm
+- openmm >=7.7
 - pytorch-cpu >=1.7
 - khronos-opencl-icd-loader
 - pocl
