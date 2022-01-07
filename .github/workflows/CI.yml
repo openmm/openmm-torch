@@ -41,7 +41,8 @@ jobs:
 
 
     steps:
-      - uses: actions/checkout@v2
+      - name: "Check out"
+        uses: actions/checkout@v2
 
       - name: "Install CUDA Toolkit on Linux (if needed)"
         uses: Jimver/cuda-toolkit@v0.2.5
