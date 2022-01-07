@@ -27,7 +27,7 @@ jobs:
             os: ubuntu-latest
             gcc-version: "9"
             cuda-version: "10.2"
-            cdt-name: cos6  # cuda 11+ requires cos7
+            cdt-name: cos7
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
