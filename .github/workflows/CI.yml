@@ -116,34 +116,11 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          set +e
-          summary=""
-          exitcode=0
-          for f in Test*; do
-            echo "::group::$f"
-            summary+="\n${f}: "
-            if [[ $f == *Cuda* ]]; then
-              echo "Skipping $f..."
-              summary+="Skipped"
-              echo "::endgroup::"
-              continue
-            fi
-            echo "Running $f..."
-            ./${f}
-            thisexitcode=$?
-            if [[ $thisexitcode == 0 ]]; then summary+="OK"; else summary+="FAILED"; fi
-            ((exitcode+=$thisexitcode))
-            echo "::endgroup::"
-          done
-          echo "-------"
-          echo "Summary"
-          echo "-------"
-          echo -e "${summary}"
-          exit $exitcode
+          ctest --verbose
 
       - name: "Run Python test"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
-          python -m pytest -v Test*
+          pytest --verbose Test*
