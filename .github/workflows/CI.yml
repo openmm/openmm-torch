@@ -26,7 +26,7 @@ jobs:
             python-version: "3.7"
             os: ubuntu-latest
             gcc-version: "9"
-            cuda-version: "10.2"
+            cuda-version: "10.2.89"
             cdt-name: cos7
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
@@ -58,7 +58,7 @@ jobs:
         run: |
           sed -i -e "s/@CDT_NAME@/${{ matrix.cdt-name }}/g" \
                  -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}.*/g" \
-                 -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}.*/g" \
+                 -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
                  devtools/conda-envs/build-${{ matrix.os }}.yml
 
       - uses: conda-incubator/setup-miniconda@v2
