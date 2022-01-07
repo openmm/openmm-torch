@@ -11,5 +11,5 @@ dependencies:
   - pocl
   - pytest
   - python
-  - pytorch-cpu @PYTORCH_VERSION@
+  - pytorch-cpu 1.9.*
   - swig

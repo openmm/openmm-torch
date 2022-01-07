@@ -51,11 +51,7 @@ jobs:
 
           - name: MacOS (Python 3.9, PyTorch 1.10)
             os: macos-11
-            cuda-version: "none"
-            gcc-version: "none"
-            nvcc-version: "none"
             python-version: "3.9"
-            pytorch-version: "1.10.*"
             CMAKE_FLAGS: ""
 
 
@@ -74,6 +70,7 @@ jobs:
         if: startsWith(matrix.os, 'macos')
 
       - name: "Update the conda enviroment file (if needed)"
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
                  -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}/g" \
