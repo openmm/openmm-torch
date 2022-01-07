@@ -23,5 +23,6 @@ dependencies:
 - ocl-icd
 - cudatoolkit @CUDATOOLKIT_VERSION@
 - pocl
+- sysroot_linux-64 2.17
 # test
 - pytest
