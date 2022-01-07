@@ -22,18 +22,20 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux CUDA {{ matrix.cuda-version }} Python {{ matrix.python-version }}
+          # Oldest supported versions
+          - name: Linux (CUDA 10.2 PyTorch 1.7 Python 3.7)
             os: ubuntu-18.04
             cuda-version: "10.2.89"
             gcc-version: "9.*"
             nvcc-version: "10.2"
             python-version: "3.7"
+            pytorch-version: "1.7.*"
             CMAKE_FLAGS: |
               -DNN_BUILD_CUDA_LIB=ON \
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
-          - name: MacOS Python {{ matrix.python-version }}
+          - name: MacOS (Python 3.9)
             os: macos-latest
             python-version: "3.9"
             CMAKE_FLAGS: ""
@@ -59,6 +61,7 @@ jobs:
           sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
                  -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}/g" \
                  -e "s/@NVCC_VERSION@/${{ matrix.nvcc-version }}/g" \
+                 -e "s/@PYTORCH_VERSION@/${{ matrix.pytorch-version }}/g" \
                  devtools/conda-envs/build-${{ matrix.os }}.yml
 
       - uses: conda-incubator/setup-miniconda@v2
