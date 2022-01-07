@@ -36,9 +36,9 @@ jobs:
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
           # Latest supported versions
-          - name: Linux (CUDA 11.5 PyTorch 1.10 Python 3.9)
+          - name: Linux (CUDA 11.2 PyTorch 1.10 Python 3.9)
             os: ubuntu-18.04
-            cuda-version: "11.5.0"
+            cuda-version: "11.2.2"
             gcc-version: "11.2.*"
             nvcc-version: "11.2"
             python-version: "3.9"
