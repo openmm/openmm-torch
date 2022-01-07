@@ -1,18 +1,15 @@
 name: build
 channels:
-- conda-forge
+  - conda-forge
 dependencies:
-# build
-- cmake
-- make
-- compilers
-# host
-- python
-- pip
-- swig
-- openmm
-- pytorch-cpu >=1.7
-- khronos-opencl-icd-loader
-#- pocl
-# test
-- pytest
+  - cmake
+  - compilers
+  - khronos-opencl-icd-loader
+  - make
+  - openmm
+  - pip
+  - pocl
+  - pytest
+  - python
+  - pytorch-cpu >=1.7
+  - swig
