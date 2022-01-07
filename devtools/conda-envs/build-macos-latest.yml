@@ -13,6 +13,6 @@ dependencies:
 - openmm
 - pytorch-cpu >=1.7
 - khronos-opencl-icd-loader
-- pocl
+#- pocl
 # test
 - pytest
