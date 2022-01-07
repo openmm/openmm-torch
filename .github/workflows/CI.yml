@@ -118,11 +118,11 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          ctest --verbose
+          ctest --verbose --exclude-regex TestCuda
 
       - name: "Run Python test"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
-          pytest --verbose --exclude-regex TestCuda Test*
+          pytest --verbose Test*
