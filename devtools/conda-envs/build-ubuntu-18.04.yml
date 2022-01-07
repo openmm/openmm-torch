@@ -6,7 +6,7 @@ dependencies:
   - cudatoolkit @CUDATOOLKIT_VERSION@
   - gxx_linux-64 @GCC_VERSION@
   - make
-  - nvcc_linux-64
+  - nvcc_linux-64 @NVCC_VERSION@
   - ocl-icd
   - openmm >=7.7
   - pip
