@@ -23,7 +23,7 @@ jobs:
       matrix:
         include:
           # Oldest supported versions
-          - name: Linux (CUDA 10.2 PyTorch 1.7 Python 3.7)
+          - name: Linux (CUDA 10.2, Python 3.7, PyTorch 1.7)
             os: ubuntu-18.04
             cuda-version: "10.2.89"
             gcc-version: "9.4.*"
@@ -36,7 +36,7 @@ jobs:
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
           # Latest supported versions
-          - name: Linux (CUDA 11.2 PyTorch 1.10 Python 3.9)
+          - name: Linux (CUDA 11.2, Python 3.9, PyTorch 1.10)
             os: ubuntu-18.04
             cuda-version: "11.2.2"
             gcc-version: "11.2.*"
@@ -49,9 +49,13 @@ jobs:
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
 
-          - name: MacOS (Python 3.9)
+          - name: MacOS (Python 3.9, PyTorch 1.10)
             os: macos-11
+            cuda-version: "none"
+            gcc-version: "none"
+            nvcc-version: "none"
             python-version: "3.9"
+            pytorch-version: "1.10.*"
             CMAKE_FLAGS: ""
 
 
@@ -70,7 +74,6 @@ jobs:
         if: startsWith(matrix.os, 'macos')
 
       - name: "Update the conda enviroment file (if needed)"
-        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
                  -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}/g" \

@@ -6,10 +6,10 @@ dependencies:
   - compilers
   - khronos-opencl-icd-loader
   - make
-  - openmm
+  - openmm >=7.7
   - pip
   - pocl
   - pytest
   - python
-  - pytorch-cpu >=1.7
+  - pytorch-cpu @PYTORCH_VERSION@
   - swig
