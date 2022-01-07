@@ -50,7 +50,7 @@ jobs:
 
 
           - name: MacOS (Python 3.9)
-            os: macos-latest
+            os: macos-11
             python-version: "3.9"
             CMAKE_FLAGS: ""
 
