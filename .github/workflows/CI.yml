@@ -70,13 +70,13 @@ jobs:
         if: startsWith(matrix.os, 'macos')
 
       - name: "Update the conda enviroment file (if needed)"
-        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
                  -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}/g" \
                  -e "s/@NVCC_VERSION@/${{ matrix.nvcc-version }}/g" \
                  -e "s/@PYTORCH_VERSION@/${{ matrix.pytorch-version }}/g" \
                  devtools/conda-envs/build-${{ matrix.os }}.yml
+        if: startsWith(matrix.os, 'ubuntu')
 
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with conda"
