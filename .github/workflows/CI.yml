@@ -43,6 +43,16 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: "Install CUDA Toolkit on Linux (if needed)"
+        uses: Jimver/cuda-toolkit@v0.2.5
+        with:
+          cuda: ${{ matrix.cuda-version }}
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - name: "Install SDK on MacOS (if needed)"
+        run: source devtools/scripts/install_macos_sdk.sh
+        if: startsWith(matrix.os, 'macos')
+
       - name: "Patch conda env (if needed)"
         if: startsWith(matrix.os, 'ubuntu')
         run: |
@@ -59,16 +69,6 @@ jobs:
           environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
           auto-activate-base: false
           channels: conda-forge
-
-      - name: "Install CUDA on Ubuntu (if needed)"
-        if: matrix.cuda-version != ''
-        env:
-          CUDA_VERSION: ${{ matrix.cuda-version }}
-        run: source devtools/scripts/install_cuda.sh
-
-      - name: "Set SDK on MacOS (if needed)"
-        if: startsWith(matrix.os, 'macos')
-        run: source devtools/scripts/install_macos_sdk.sh
 
       - name: "Conda info"
         shell: bash -l {0}
