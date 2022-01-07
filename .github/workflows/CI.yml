@@ -30,8 +30,6 @@ jobs:
             nvcc-version: "10.2"
             python-version: "3.7"
             pytorch-version: "1.7.*"
-            CMAKE_FLAGS: |
-              -DNN_BUILD_CUDA_LIB=ON
 
           # Latest supported versions
           - name: Linux (CUDA 11.2, Python 3.9, PyTorch 1.10)
@@ -41,8 +39,6 @@ jobs:
             nvcc-version: "11.2"
             python-version: "3.9"
             pytorch-version: "1.10.*"
-            CMAKE_FLAGS: |
-              -DNN_BUILD_CUDA_LIB=ON
 
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
@@ -51,7 +47,6 @@ jobs:
             nvcc-version: ""
             python-version: "3.9"
             pytorch-version: "1.9.*" # Some test fails with 1.10
-            CMAKE_FLAGS: ""
 
 
     steps:
@@ -111,8 +106,7 @@ jobs:
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
             -DNN_BUILD_OPENCL_LIB=ON \
             -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
-            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
-            ${{ matrix.CMAKE_FLAGS }}
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT}
 
       - name: "Build"
         shell: bash -l {0}
