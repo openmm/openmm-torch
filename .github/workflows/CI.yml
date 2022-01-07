@@ -54,7 +54,7 @@ jobs:
         run: source devtools/scripts/install_macos_sdk.sh
         if: startsWith(matrix.os, 'macos')
 
-      - name: "Patch conda env (if needed)"
+      - name: "Update the conda enviroment file (if needed)"
         if: startsWith(matrix.os, 'ubuntu')
         run: |
           sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
@@ -63,7 +63,7 @@ jobs:
                  devtools/conda-envs/build-${{ matrix.os }}.yml
 
       - uses: conda-incubator/setup-miniconda@v2
-        name: "Prepare base dependencies"
+        name: "Install dependencies with conda"
         with:
           python-version: ${{ matrix.python-version }}
           activate-environment: build
@@ -71,13 +71,11 @@ jobs:
           auto-activate-base: false
           channels: conda-forge
 
-      - name: "Conda info"
+      - name: "List conda packages"
         shell: bash -l {0}
-        run: |
-          conda info -a
-          conda list
+        run: conda list
 
-      - name: "Configure build with CMake"
+      - name: "Configure"
         shell: bash -l {0}
         run: |
           mkdir build
@@ -107,13 +105,13 @@ jobs:
           make -j2 install
           make -j2 PythonInstall
 
-      - name: "Plugin information"
+      - name: "List plugins"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
-          python -c "import simtk.openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
+          python -c "import openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
 
-      - name: "Test C++"
+      - name: "Run C++ test"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
@@ -143,7 +141,7 @@ jobs:
           echo -e "${summary}"
           exit $exitcode
 
-      - name: "Test Python"
+      - name: "Run Python test"
         shell: bash -l {0}
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
