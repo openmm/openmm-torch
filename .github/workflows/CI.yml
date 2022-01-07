@@ -49,9 +49,13 @@ jobs:
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
 
-          - name: MacOS (Python 3.9, PyTorch 1.10)
+          - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
+            cuda-version: ""
+            gcc-version: ""
+            nvcc-version: ""
             python-version: "3.9"
+            pytorch-version: "1.9.*" # Some test fails with 1.10
             CMAKE_FLAGS: ""
 
 
@@ -69,14 +73,17 @@ jobs:
         run: source devtools/scripts/install_macos_sdk.sh
         if: startsWith(matrix.os, 'macos')
 
-      - name: "Update the conda enviroment file (if needed)"
-        run: |
-          sed -i -e "s/@CUDATOOLKIT_VERSION@/${{ matrix.cuda-version }}/g" \
-                 -e "s/@GCC_VERSION@/${{ matrix.gcc-version }}/g" \
-                 -e "s/@NVCC_VERSION@/${{ matrix.nvcc-version }}/g" \
-                 -e "s/@PYTORCH_VERSION@/${{ matrix.pytorch-version }}/g" \
-                 devtools/conda-envs/build-${{ matrix.os }}.yml
-        if: startsWith(matrix.os, 'ubuntu')
+      - name: "Update the conda enviroment file"
+        uses: cschleiden/replace-tokens@v1
+        with:
+          tokenPrefix: '@'
+          tokenSuffix: '@'
+          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+        env:
+          CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
+          GCC_VERSION: ${{ matrix.gcc-version }}
+          NVCC_VERSION: ${{ matrix.nvcc-version }}
+          PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with conda"
