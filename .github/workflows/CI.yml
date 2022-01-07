@@ -22,7 +22,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux CPU CUDA 10.2 Python 3.7
+          - name: Linux CUDA {{ matrix.cuda-version }} Python {{ matrix.python-version }}
             os: ubuntu-18.04
             cuda-version: "10.2.89"
             gcc-version: "9.*"
@@ -33,10 +33,9 @@ jobs:
               -DCUDA_TOOLKIT_ROOT_DIR=/usr/local/cuda \
               -DEXTRA_COMPILE_FLAGS="-L/usr/local/cuda/lib64/stubs -Wl,-rpath,/usr/local/cuda/lib64/stubs -Wl,-rpath-link,/usr/local/cuda/lib64/stubs"
 
-          - name: MacOS Intel CPU Python 3.9
-            python-version: "3.9"
+          - name: MacOS Python {{ matrix.python-version }}
             os: macos-latest
-            cuda-version: ""
+            python-version: "3.9"
             CMAKE_FLAGS: ""
 
 
