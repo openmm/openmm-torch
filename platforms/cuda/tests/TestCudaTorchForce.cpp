@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -50,7 +50,7 @@ using namespace std;
 
 extern "C" OPENMM_EXPORT void registerTorchCudaKernelFactories();
 
-void testForce() {
+void testForce(bool outputsForces) {
     // Create a random cloud of particles.
     
     const int numParticles = 10;
@@ -62,7 +62,8 @@ void testForce() {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    TorchForce* force = new TorchForce("tests/central.pt");
+    TorchForce* force = new TorchForce(outputsForces ? "tests/forces.pt" : "tests/central.pt");
+    force->setOutputsForces(outputsForces);
     system.addForce(force);
     
     // Compute the forces and energy.
@@ -176,7 +177,8 @@ int main(int argc, char* argv[]) {
         registerTorchCudaKernelFactories();
         if (argc > 1)
             Platform::getPlatformByName("CUDA").setPropertyDefaultValue("Precision", string(argv[1]));
-        testForce();
+        testForce(false);
+        testForce(true);
         testPeriodicForce();
         testGlobal();
     }

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2021 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -55,6 +55,7 @@ CudaCalcTorchForceKernel::~CudaCalcTorchForceKernel() {
 void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
@@ -100,10 +101,19 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         inputs.push_back(boxTensor);
     for (const string& name : globalNames)
         inputs.push_back(torch::tensor(context.getParameter(name)));
-    torch::Tensor energyTensor = module.forward(inputs).toTensor();
+    torch::Tensor energyTensor, forceTensor;
+    if (outputsForces) {
+        auto outputs = module.forward(inputs).toTuple();
+        energyTensor = outputs->elements()[0].toTensor();
+        forceTensor = outputs->elements()[1].toTensor();
+    }
+    else
+        energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
-        energyTensor.backward();
-        torch::Tensor forceTensor = posTensor.grad();
+        if (!outputsForces) {
+            energyTensor.backward();
+            forceTensor = posTensor.grad();
+        }
         void* data;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
@@ -115,15 +125,17 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 forceTensor = forceTensor.to(torch::kFloat32);
             data = forceTensor.data_ptr<float>();
         }
-        int paddedNumAtoms = cu.getPaddedNumAtoms();
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
+        int paddedNumAtoms = cu.getPaddedNumAtoms();
+        int forceSign = (outputsForces ? 1 : -1);
         {
             ContextSelector selector(cu);
-            void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms};
+            void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms, &forceSign};
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
             CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
-        posTensor.grad().zero_();
+        if (!outputsForces)
+            posTensor.grad().zero_();
     }
     return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
 }

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -39,7 +39,7 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-TorchForce::TorchForce(const std::string& file) : file(file), usePeriodic(false) {
+TorchForce::TorchForce(const std::string& file) : file(file), usePeriodic(false), outputsForces(false) {
 }
 
 const string& TorchForce::getFile() const {
@@ -56,6 +56,14 @@ void TorchForce::setUsesPeriodicBoundaryConditions(bool periodic) {
 
 bool TorchForce::usesPeriodicBoundaryConditions() const {
     return usePeriodic;
+}
+
+void TorchForce::setOutputsForces(bool outputsForces) {
+    this->outputsForces = outputsForces;
+}
+
+bool TorchForce::getOutputsForces() const {
+    return outputsForces;
 }
 
 int TorchForce::addGlobalParameter(const string& name, double defaultValue) {
