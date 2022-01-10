@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -67,6 +67,19 @@ public:
      */
     bool usesPeriodicBoundaryConditions() const;
     /**
+     * Set whether the network directly outputs forces.  By default it is expected to produce
+     * a single scalar output containing the energy, and backpropagation is used to compute
+     * the forces.  Alternatively, you can set this flag to true in which case the network is
+     * expected to produce a tuple with two elements: a scalar with the potential energy, and an
+     * Nx3 tensor with the force on every atom.  This can be useful when you have a more efficient
+     * way to compute the forces than the generic backpropagation algorithm.
+     */
+    void setOutputsForces(bool outputsForces);
+    /**
+     * Get whether the network directly outputs forces.
+     */
+    bool getOutputsForces() const;
+    /**
      * Get the number of global parameters that the interaction depends on.
      */
     int getNumGlobalParameters() const;
@@ -113,7 +126,7 @@ protected:
 private:
     class GlobalParameterInfo;
     std::string file;
-    bool usePeriodic;
+    bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
 };
 

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2020 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -44,6 +44,7 @@ OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
 void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
+    outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
@@ -82,10 +83,19 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
     }
     for (const string& name : globalNames)
         inputs.push_back(torch::tensor(context.getParameter(name)));
-    torch::Tensor energyTensor = module.forward(inputs).toTensor();
+    torch::Tensor energyTensor, forceTensor;
+    if (outputsForces) {
+        auto outputs = module.forward(inputs).toTuple();
+        energyTensor = outputs->elements()[0].toTensor();
+        forceTensor = outputs->elements()[1].toTensor();
+    }
+    else
+        energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
-        energyTensor.backward();
-        torch::Tensor forceTensor = posTensor.grad();
+        if (!outputsForces) {
+            energyTensor.backward();
+            forceTensor = posTensor.grad();
+        }
         if (cl.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
@@ -102,6 +112,7 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
         addForcesKernel.setArg<cl::Buffer>(1, cl.getForceBuffers().getDeviceBuffer());
         addForcesKernel.setArg<cl::Buffer>(2, cl.getAtomIndexArray().getDeviceBuffer());
         addForcesKernel.setArg<cl_int>(3, numParticles);
+        addForcesKernel.setArg<cl_int>(4, outputsForces ? 1 : -1);
         cl.executeKernel(addForcesKernel, numParticles);
     }
     return energyTensor.item<double>();
