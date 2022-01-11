@@ -148,6 +148,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
             CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
+
+        // Reset the forces
         if (!outputsForces)
             posTensor.grad().zero_();
     }
