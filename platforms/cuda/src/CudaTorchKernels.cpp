@@ -79,6 +79,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     int numParticles = cu.getNumAtoms();
+
+    // Get pointers to the atomic positions and simulation box
     void* posData;
     void* boxData;
     if (cu.getUseDoublePrecision()) {
@@ -89,6 +91,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         posData = posTensor.data_ptr<float>();
         boxData = boxTensor.data_ptr<float>();
     }
+
+    // Copy the atomic positions and simulation box to PyTorch tensors
     {
         ContextSelector selector(cu);
         void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
@@ -96,11 +100,15 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
     }
+
+    // Prepare the input of the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
     for (const string& name : globalNames)
         inputs.push_back(torch::tensor(context.getParameter(name)));
+
+    // Execute the PyTorch model
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -109,28 +117,35 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
     else
         energyTensor = module.forward(inputs).toTensor();
+
     if (includeForces) {
+
+        // Compute force by backprogating the PyTorch model
         if (!outputsForces) {
             energyTensor.backward();
             forceTensor = posTensor.grad();
         }
-        void* data;
+
+        // Get a pointer to the computed forces
+        void* forceData;
         if (cu.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
-            data = forceTensor.data_ptr<double>();
+            forceData = forceTensor.data_ptr<double>();
         }
         else {
             if (!(forceTensor.dtype() == torch::kFloat32))
                 forceTensor = forceTensor.to(torch::kFloat32);
-            data = forceTensor.data_ptr<float>();
+            forceData = forceTensor.data_ptr<float>();
         }
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
-        int paddedNumAtoms = cu.getPaddedNumAtoms();
-        int forceSign = (outputsForces ? 1 : -1);
+
+        // Add the computed forces to the total atomic forces
         {
             ContextSelector selector(cu);
-            void* forceArgs[] = {&data, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms, &forceSign};
+            int paddedNumAtoms = cu.getPaddedNumAtoms();
+            int forceSign = (outputsForces ? 1 : -1);
+            void* forceArgs[] = {&forceData, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms, &forceSign};
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
             CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
