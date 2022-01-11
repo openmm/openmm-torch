@@ -64,9 +64,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     module.to(torch::kCUDA); // This implicitly initialize PyTorch
     torch::TensorOptions options = torch::TensorOptions()
             .device(torch::kCUDA, cu.getDeviceIndex())
-            .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32)
-            .requires_grad(true);
-    posTensor = torch::empty({numParticles, 3}, options);
+            .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
+    posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
 
     // Initialize CUDA objects for OpenMM-Torch
