@@ -129,12 +129,12 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         // Get a pointer to the computed forces
         void* forceData;
         if (cu.getUseDoublePrecision()) {
-            if (!(forceTensor.dtype() == torch::kFloat64))
+            if (forceTensor.dtype() != torch::kFloat64)
                 forceTensor = forceTensor.to(torch::kFloat64);
             forceData = forceTensor.data_ptr<double>();
         }
         else {
-            if (!(forceTensor.dtype() == torch::kFloat32))
+            if (forceTensor.dtype() != torch::kFloat32)
                 forceTensor = forceTensor.to(torch::kFloat32);
             forceData = forceTensor.data_ptr<float>();
         }
