@@ -1,8 +1,7 @@
-import simtk.openmm as mm
-import simtk.unit as unit
+import openmm as mm
+import openmm.unit as unit
 import openmmtorch as ot
 import numpy as np
-import unittest
 import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
@@ -10,7 +9,7 @@ from tempfile import NamedTemporaryFile
 @pytest.mark.parametrize('model_file, output_forces,',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
-def testForceDirect(model_file, output_forces):
+def testForce(model_file, output_forces):
 
     # Create a random cloud of particles.
     numParticles = 10
@@ -88,8 +87,3 @@ def testModuleArguments(deviceString, precision):
 
         context.setPositions(positions)
         context.getState(getEnergy=True, getForces=True)
-
-
-if __name__ == '__main__':
-    unittest.main()
-
