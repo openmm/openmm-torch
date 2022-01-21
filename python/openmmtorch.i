@@ -33,6 +33,8 @@ public:
     const std::string& getFile() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
     bool usesPeriodicBoundaryConditions() const;
+    void setOutputsForces(bool);
+    bool getOutputsForces() const;
     int getNumGlobalParameters() const;
     int addGlobalParameter(const std::string& name, double defaultValue);
     const std::string& getGlobalParameterName(int index) const;
