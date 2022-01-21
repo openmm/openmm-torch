@@ -7,32 +7,35 @@ import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
 
-class TestTorchForce(unittest.TestCase):
+@pytest.mark.parametrize('model_file, output_forces,',
+                        [('../../tests/central.pt', False),
+                         ('../../tests/forces.pt', True)])
+def testForceDirect(model_file, output_forces):
 
-    def testForce(self):
-        # Create a random cloud of particles.
+    # Create a random cloud of particles.
+    numParticles = 10
+    system = mm.System()
+    positions = np.random.rand(numParticles, 3)
+    for i in range(numParticles):
+        system.addParticle(1.0)
 
-        numParticles = 10
-        system = mm.System()
-        positions = np.random.rand(numParticles, 3)
-        for i in range(numParticles):
-            system.addParticle(1.0)
-        force = ot.TorchForce("../../tests/central.pt")
-        system.addForce(force)
+    # Create a force
+    force = ot.TorchForce(model_file)
+    assert not force.getOutputsForces() # Check the default
+    force.setOutputsForces(output_forces)
+    assert force.getOutputsForces() == output_forces
+    system.addForce(force)
 
-        # Compute the forces and energy.
+    # Compute the forces and energy.
+    integ = mm.VerletIntegrator(1.0)
+    context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
+    context.setPositions(positions)
+    state = context.getState(getEnergy=True, getForces=True)
 
-        integ = mm.VerletIntegrator(1.0)
-        context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
-        context.setPositions(positions)
-        state = context.getState(getEnergy=True, getForces=True)
-
-        # See if the energy and forces are correct.  The network defines a potential of the form E(r) = |r|^2
-
-        expectedEnergy = np.sum(positions*positions)
-        assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
-        assert np.allclose(-2*positions, state.getForces(asNumpy=True))
-
+    # See if the energy and forces are correct.  The network defines a potential of the form E(r) = |r|^2
+    expectedEnergy = np.sum(positions*positions)
+    assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+    assert np.allclose(-2*positions, state.getForces(asNumpy=True))
 
 @pytest.mark.parametrize('deviceString', ['cpu', 'cuda:0', 'cuda:1'])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
