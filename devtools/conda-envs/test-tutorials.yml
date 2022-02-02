@@ -1,0 +1,5 @@
+name: test
+channels:
+  - conda-forge
+dependencies:
+  - notebook
