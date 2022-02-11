@@ -68,6 +68,11 @@ install the Python wrapper.
 Using the OpenMM PyTorch plugin
 ===============================
 
+Tutorials
+---------
+
+- [A simple simulation of alanine dipeptide with ANI-2x using OpenMM-Torch and NNPOps](tutorial/openmm-torch-nnpops.ipynb)
+
 Exporting a PyTorch model for use in OpenMM
 -------------------------------------------
 
