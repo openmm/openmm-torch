@@ -76,6 +76,31 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     addForcesKernel = cu.getKernel(program, "addForces");
 }
 
+static void graphable(bool outputsForces,
+                      bool includeForces,
+                      torch::jit::script::Module& module,
+                      vector<torch::jit::IValue>& inputs,
+                      torch::Tensor& posTensor,
+                      torch::Tensor& energyTensor,
+                      torch::Tensor& forceTensor) {
+
+    // Execute the PyTorch model
+    if (outputsForces) {
+        auto outputs = module.forward(inputs).toTuple();
+        energyTensor = outputs->elements()[0].toTensor();
+        forceTensor = outputs->elements()[1].toTensor();
+    }
+    else
+        energyTensor = module.forward(inputs).toTensor();
+
+    // Compute force by backprogating the PyTorch model
+    if (includeForces)
+        if (!outputsForces) {
+            energyTensor.backward();
+            forceTensor = posTensor.grad();
+        }
+}
+
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     int numParticles = cu.getNumAtoms();
 
@@ -109,21 +134,9 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 
     // Execute the PyTorch model
     torch::Tensor energyTensor, forceTensor;
-    if (outputsForces) {
-        auto outputs = module.forward(inputs).toTuple();
-        energyTensor = outputs->elements()[0].toTensor();
-        forceTensor = outputs->elements()[1].toTensor();
-    }
-    else
-        energyTensor = module.forward(inputs).toTensor();
+    graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
     if (includeForces) {
-
-        // Compute force by backprogating the PyTorch model
-        if (!outputsForces) {
-            energyTensor.backward();
-            forceTensor = posTensor.grad();
-        }
 
         // Get a pointer to the computed forces
         void* forceData;
