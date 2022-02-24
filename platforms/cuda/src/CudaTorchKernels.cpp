@@ -141,13 +141,11 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         // Get a pointer to the computed forces
         void* forceData;
         if (cu.getUseDoublePrecision()) {
-            if (!(forceTensor.dtype() == torch::kFloat64)) // TODO: simplify the logic when support for PyTorch 1.7 is dropped
-                forceTensor = forceTensor.to(torch::kFloat64);
+            forceTensor = forceTensor.to(torch::kFloat64);
             forceData = forceTensor.data_ptr<double>();
         }
         else {
-            if (!(forceTensor.dtype() == torch::kFloat32)) // TODO: simplify the logic when support for PyTorch 1.7 is dropped
-                forceTensor = forceTensor.to(torch::kFloat32);
+            forceTensor = forceTensor.to(torch::kFloat32);
             forceData = forceTensor.data_ptr<float>();
         }
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
