@@ -35,6 +35,7 @@
 #include "TorchKernels.h"
 #include "openmm/cuda/CudaContext.h"
 #include "openmm/cuda/CudaArray.h"
+#include <ATen/cuda/CUDAGraph.h>
 
 namespace TorchPlugin {
 
@@ -44,7 +45,7 @@ namespace TorchPlugin {
 class CudaCalcTorchForceKernel : public CalcTorchForceKernel {
 public:
     CudaCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::CudaContext& cu) :
-            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
+            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu), useGraph(false), graphCaptured(false) {
     }
     ~CudaCalcTorchForceKernel();
     /**
@@ -73,6 +74,8 @@ private:
     std::vector<std::string> globalNames;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
+    bool useGraph, graphCaptured;
+    at::cuda::CUDAGraph graph;
 };
 
 } // namespace TorchPlugin

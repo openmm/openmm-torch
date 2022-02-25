@@ -33,8 +33,9 @@
 #include "CudaTorchKernelSources.h"
 #include "openmm/common/ContextSelector.h"
 #include "openmm/internal/ContextImpl.h"
-#include <map>
+#include <c10/cuda/CUDAGuard.h>
 #include <cuda_runtime_api.h>
+#include <map>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
@@ -135,15 +136,40 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
     }
 
-    // Prepare the input of the PyTorch model
+    // Prepare an input for the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
-    if (usePeriodic)
-        inputs.push_back(boxTensor);
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    if (!useGraph || !graphCaptured) {
+        if (usePeriodic)
+            inputs.push_back(boxTensor);
+        for (const string& name : globalNames)
+            inputs.push_back(torch::tensor(context.getParameter(name)));
+    }
+
+    // Convert the PyTorch model into a CUDA Graph
+    if (!graphCaptured) {
+
+        // Get a stream for a graph capture
+        c10::cuda::CUDAStream stream = c10::cuda::getStreamFromPool(false, posTensor.device().index());
+        c10::cuda::CUDAStreamGuard guard(stream);
+
+        // Warm up the graph
+        for (int i = 0; i < 3; i++)
+            graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+
+        // Capture the graph
+        graph.capture_begin();
+        graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+        graph.capture_end();
+        graphCaptured = true;
+    }
 
     // Execute the PyTorch model
-    graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+    if (useGraph)
+        // Execute the corresponding CUDA Graph
+        graph.replay();
+    else
+        // Execute the PyTorch model directly
+        graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
     if (includeForces) {
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
