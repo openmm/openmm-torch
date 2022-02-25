@@ -9,7 +9,11 @@ from tempfile import NamedTemporaryFile
 @pytest.mark.parametrize('model_file, output_forces',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
-@pytest.mark.parametrize('platform, use_graph', [('Reference', False), ('CPU', False), ('CUDA', False), ('CUDA', True)])
+@pytest.mark.parametrize('platform, use_graph',
+                         [('Reference', False),
+                          ('CPU', False),
+                          ('CUDA', False),
+                          ('CUDA', True)])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
 def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
 
