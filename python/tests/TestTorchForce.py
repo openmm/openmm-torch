@@ -6,12 +6,12 @@ import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
 
-@pytest.mark.parametrize('model_file, output_forces,',
+@pytest.mark.parametrize('model_file, output_forces',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
-@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA'])
+@pytest.mark.parametrize('platform, use_graph', [('Reference', False), ('CPU', False), ('CUDA', False), ('CUDA', True)])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
-def testEnergyForce(model_file, output_forces, platform, precision):
+def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
 
     if pt.cuda.device_count() < 1 and platform == 'CUDA':
         pytest.skip('A CUDA device is not available')
@@ -28,6 +28,10 @@ def testEnergyForce(model_file, output_forces, platform, precision):
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
+    assert force.getPlatformProperty('CUDAGraph') == ''
+    if use_graph:
+        force.setPlatformProperty('CUDAGraph', 'true')
+        assert force.getPlatformProperty('CUDAGraph') == 'true'
     system.addForce(force)
 
     # Set up a simulation
