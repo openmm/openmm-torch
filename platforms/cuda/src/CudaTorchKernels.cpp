@@ -92,7 +92,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
 #if CUDA_GRAPHS_SUPPORTED
-    useGraphs = true;
+    useGraphs = force.getPlatformProperty("CUDAGraph") == "true";
 #else
     useGraphs = false;
 #endif

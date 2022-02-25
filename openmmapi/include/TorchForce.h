@@ -34,6 +34,7 @@
 
 #include "openmm/Context.h"
 #include "openmm/Force.h"
+#include <map>
 #include <string>
 #include <torch/torch.h>
 #include "internal/windowsExportTorch.h"
@@ -140,6 +141,10 @@ public:
      * @param defaultValue   the default value of the parameter
      */
     void setGlobalParameterDefaultValue(int index, double defaultValue);
+
+    void setPlatformProperty(const std::string& name, const std::string& value);
+
+    const std::string& getPlatformProperty(const std::string& name) const;
 protected:
     OpenMM::ForceImpl* createImpl() const;
 private:
@@ -148,6 +153,8 @@ private:
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
     torch::jit::Module module;
+    std::map<std::string, std::string> platformProperties;
+    std::string emptyProperty;
 };
 
 /**
