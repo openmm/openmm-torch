@@ -1,5 +1,5 @@
 import openmm as mm
-import openmm.unit as unit
+from openmm import unit
 import openmmtorch as ot
 import numpy as np
 import pytest
@@ -9,13 +9,18 @@ from tempfile import NamedTemporaryFile
 @pytest.mark.parametrize('model_file, output_forces,',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
-def testForce(model_file, output_forces):
+@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA'])
+@pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
+def testEnergyForce(model_file, output_forces, platform, precision):
 
-    # Create a random cloud of particles.
+    if pt.cuda.device_count() < 1 and platform == 'CUDA':
+        pytest.skip('A CUDA device is not available')
+
+    # Create a system
     numParticles = 10
     system = mm.System()
     positions = np.random.rand(numParticles, 3)
-    for i in range(numParticles):
+    for _ in range(numParticles):
         system.addParticle(1.0)
 
     # Create a force
@@ -25,16 +30,24 @@ def testForce(model_file, output_forces):
     assert force.getOutputsForces() == output_forces
     system.addForce(force)
 
-    # Compute the forces and energy.
-    integ = mm.VerletIntegrator(1.0)
-    context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
+    # Set up a simulation
+    integrator = mm.VerletIntegrator(1.0)
+    properties = {}
+    if platform == 'CUDA':
+        properties['Precision'] = precision
+    platform = mm.Platform.getPlatformByName(platform)
+    context = mm.Context(system, integrator, platform, properties)
     context.setPositions(positions)
-    state = context.getState(getEnergy=True, getForces=True)
 
-    # See if the energy and forces are correct.  The network defines a potential of the form E(r) = |r|^2
+    # Get expected values
     expectedEnergy = np.sum(positions*positions)
-    assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
-    assert np.allclose(-2*positions, state.getForces(asNumpy=True))
+    expectedForces = -2*positions
+
+    # Compare energy and forces
+    for _ in range(3):
+        state = context.getState(getEnergy=True, getForces=True)
+        assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+        assert np.allclose(expectedForces, state.getForces(asNumpy=True))
 
 @pytest.mark.parametrize('deviceString', ['cpu', 'cuda:0', 'cuda:1'])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
