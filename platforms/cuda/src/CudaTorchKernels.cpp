@@ -114,8 +114,13 @@ static void graphable(bool outputsForces,
             forces = posTensor.grad();
         }
 
+    // Set the output tensors
     energyTensor.index_put_({0}, energy);
     forceTensor.index_put_({"..."}, forces.to(posTensor.dtype()));
+
+    // Reset the forces
+    if (!outputsForces)
+        posTensor.grad().zero_();
 }
 
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
@@ -152,10 +157,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
             CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
-
-        // Reset the forces
-        if (!outputsForces)
-            posTensor.grad().zero_();
     }
+
     return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
 }
