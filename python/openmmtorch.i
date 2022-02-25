@@ -41,6 +41,8 @@ public:
     void setGlobalParameterName(int index, const std::string& name);
     double getGlobalParameterDefaultValue(int index) const;
     void setGlobalParameterDefaultValue(int index, double defaultValue);
+    void setPlatformProperty(const std::string& name, const std::string& value);
+    const std::string& getPlatformProperty(const std::string& name) const;
 
     /*
      * Add methods for casting a Force to a TorchForce.
