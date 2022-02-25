@@ -70,6 +70,17 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     energyTensor = torch::empty({1}, options.dtype(torch::kFloat64));
     forceTensor = torch::empty({numParticles, 3}, options);
 
+    // Get pointers to data
+    if (cu.getUseDoublePrecision()) {
+        posData = posTensor.data_ptr<double>();
+        boxData = boxTensor.data_ptr<double>();
+        forceData = forceTensor.data_ptr<double>();
+    } else {
+        posData = posTensor.data_ptr<float>();
+        boxData = boxTensor.data_ptr<float>();
+        forceData = forceTensor.data_ptr<float>();
+    }
+
     // Initialize CUDA objects for OpenMM-Torch
     ContextSelector selector(cu);
     map<string, string> defines;
@@ -110,18 +121,6 @@ static void graphable(bool outputsForces,
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     int numParticles = cu.getNumAtoms();
 
-    // Get pointers to the atomic positions and simulation box
-    void* posData;
-    void* boxData;
-    if (cu.getUseDoublePrecision()) {
-        posData = posTensor.data_ptr<double>();
-        boxData = boxTensor.data_ptr<double>();
-    }
-    else {
-        posData = posTensor.data_ptr<float>();
-        boxData = boxTensor.data_ptr<float>();
-    }
-
     // Copy the atomic positions and simulation box to PyTorch tensors
     {
         ContextSelector selector(cu);
@@ -142,13 +141,6 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
     if (includeForces) {
-
-        // Get a pointer to the computed forces
-        void* forceData;
-        if (cu.getUseDoublePrecision())
-            forceData = forceTensor.data_ptr<double>();
-        else
-            forceData = forceTensor.data_ptr<float>();
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
 
         // Add the computed forces to the total atomic forces

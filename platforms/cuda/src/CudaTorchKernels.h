@@ -69,6 +69,7 @@ private:
     OpenMM::CudaContext& cu;
     torch::jit::script::Module module;
     torch::Tensor posTensor, boxTensor, energyTensor, forceTensor;
+    void *posData, *boxData, *forceData;
     std::vector<std::string> globalNames;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
