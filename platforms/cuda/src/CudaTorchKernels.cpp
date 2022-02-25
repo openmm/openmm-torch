@@ -61,6 +61,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
+    // Enable CUDA Graph
+    useGraph = force.getPlatformProperty("CUDAGraph") == "true";
+
     // Initialize CUDA objects for PyTorch
     module.to(torch::kCUDA); // This implicitly initialize PyTorch
     torch::TensorOptions options = torch::TensorOptions()

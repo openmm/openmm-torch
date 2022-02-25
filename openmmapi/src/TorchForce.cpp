@@ -94,3 +94,13 @@ void TorchForce::setGlobalParameterDefaultValue(int index, double defaultValue) 
     ASSERT_VALID_INDEX(index, globalParameters);
     globalParameters[index].defaultValue = defaultValue;
 }
+
+void TorchForce::setPlatformProperty(const std::string& name, const std::string& value) {
+    platformProperties[name] = value;
+}
+
+const std::string& TorchForce::getPlatformProperty(const std::string& name) const {
+    if (platformProperties.find(name) != platformProperties.end())
+        return platformProperties.at(name);
+    return emptyProperty;
+}
