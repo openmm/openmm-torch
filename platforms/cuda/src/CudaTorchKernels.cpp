@@ -67,6 +67,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
             .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
+    energyTensor = torch::empty({1}, options.dtype(torch::kFloat64));
+    forceTensor = torch::empty({numParticles, 3}, options);
 
     // Initialize CUDA objects for OpenMM-Torch
     ContextSelector selector(cu);
@@ -85,20 +87,24 @@ static void graphable(bool outputsForces,
                       torch::Tensor& forceTensor) {
 
     // Execute the PyTorch model
+    torch::Tensor energy, forces;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
-        energyTensor = outputs->elements()[0].toTensor();
-        forceTensor = outputs->elements()[1].toTensor();
+        energy = outputs->elements()[0].toTensor();
+        forces = outputs->elements()[1].toTensor();
     }
     else
-        energyTensor = module.forward(inputs).toTensor();
+        energy = module.forward(inputs).toTensor();
 
     // Compute force by backprogating the PyTorch model
     if (includeForces)
         if (!outputsForces) {
-            energyTensor.backward();
-            forceTensor = posTensor.grad();
+            energy.backward();
+            forces = posTensor.grad();
         }
+
+    energyTensor.index_put_({0}, energy);
+    forceTensor.index_put_({"..."}, forces.to(posTensor.dtype()));
 }
 
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
@@ -133,21 +139,16 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         inputs.push_back(torch::tensor(context.getParameter(name)));
 
     // Execute the PyTorch model
-    torch::Tensor energyTensor, forceTensor;
     graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
     if (includeForces) {
 
         // Get a pointer to the computed forces
         void* forceData;
-        if (cu.getUseDoublePrecision()) {
-            forceTensor = forceTensor.to(torch::kFloat64);
+        if (cu.getUseDoublePrecision())
             forceData = forceTensor.data_ptr<double>();
-        }
-        else {
-            forceTensor = forceTensor.to(torch::kFloat32);
+        else
             forceData = forceTensor.data_ptr<float>();
-        }
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
 
         // Add the computed forces to the total atomic forces

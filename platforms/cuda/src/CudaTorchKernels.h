@@ -68,7 +68,7 @@ private:
     bool hasInitializedKernel;
     OpenMM::CudaContext& cu;
     torch::jit::script::Module module;
-    torch::Tensor posTensor, boxTensor;
+    torch::Tensor posTensor, boxTensor, energyTensor, forceTensor;
     std::vector<std::string> globalNames;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
