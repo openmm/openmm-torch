@@ -149,7 +149,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
 
     // Convert the PyTorch model into a CUDA Graph
-    if (!graphCaptured) {
+    if (useGraph && !graphCaptured) {
 
         // Get a stream for a graph capture
         c10::cuda::CUDAStream stream = c10::cuda::getStreamFromPool(false, posTensor.device().index());
