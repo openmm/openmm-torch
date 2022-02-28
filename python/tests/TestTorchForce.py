@@ -51,9 +51,10 @@ def testModuleArguments(deviceString, precision):
             super().__init__()
             self.device = device
             self.dtype = dtype
-            self.positions = pt.tensor(positions).to(self.device).to(self.dtype)
+            self.register_buffer('positions', pt.tensor(positions).to(dtype))
 
         def forward(self, positions):
+            assert self.positions.device == self.device
             assert positions.device == self.device
             assert positions.dtype == self.dtype
             assert pt.all(positions == self.positions)
