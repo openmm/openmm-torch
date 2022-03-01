@@ -65,10 +65,11 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     useGraph = force.getPlatformProperty("CUDAGraph") == "true";
 
     // Initialize CUDA objects for PyTorch
-    module.to(torch::kCUDA); // This implicitly initialize PyTorch
+    const torch::Device device(torch::kCUDA, cu.getDeviceIndex()); // This implicitly initialize PyTorch
+    module.to(device);
     torch::TensorOptions options = torch::TensorOptions()
-            .device(torch::kCUDA, cu.getDeviceIndex())
-            .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
+        .device(device)
+        .dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
     energyTensor = torch::empty({1}, options.dtype(torch::kFloat64));
