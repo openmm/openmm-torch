@@ -1,0 +1,41 @@
+name: "Test tutorials"
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    branches:
+      - "master"
+  schedule:
+    - cron: "0 0 * * 0" # Every Sunday at midnight
+
+jobs:
+  tutorial-1:
+    runs-on: "ubuntu-latest"
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@v2
+
+      - name: "Install dependencies with conda"
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          activate-environment: test
+          environment-file: devtools/conda-envs/test-tutorials.yml
+          python-version: 3.7 # Mimics Google Colab
+
+      - name: "List conda packages"
+        run: conda list
+
+      - name: "Convert the tutorial"
+        run: |
+          jupyter nbconvert --to python --stdout tutorials/openmm-torch-nnpops.ipynb > test.py
+          sed -i '/condacolab/d' test.py # Remove conda-colab
+          sed -i 's#&> /dev/null##g' test.py # Remove the output redirection
+          cat test.py
+
+      - name: "Run the tutorial"
+        run: ipython test.py
