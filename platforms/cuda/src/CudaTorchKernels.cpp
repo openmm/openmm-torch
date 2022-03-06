@@ -120,8 +120,8 @@ static void graphable(bool outputsForces,
         }
 
     // Set the output tensors
-    energyTensor.index_put_({0}, energy);
-    forceTensor.index_put_({"..."}, forces.to(posTensor.dtype()));
+    energyTensor.copy_(energy.detach());
+    forceTensor.copy_(forces.to(posTensor.dtype()));
 
     // Reset the forces
     if (!outputsForces)
