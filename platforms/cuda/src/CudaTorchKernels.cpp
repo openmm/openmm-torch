@@ -157,7 +157,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         c10::cuda::CUDAStreamGuard guard(stream);
 
         // Warm up the graph
-        for (int i = 0; i < 3; i++)
+        // for (int i = 0; i < 3; i++) // TODO debug the multiple executions
             graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
         // Capture the graph
