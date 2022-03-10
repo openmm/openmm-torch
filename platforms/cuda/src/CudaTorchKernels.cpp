@@ -142,7 +142,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 
     // Prepare an input for the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
-    if (!useGraph || !graphCaptured) {
+    if (!useGraph || graphs.find(includeForces) == graphs.end()) {
         if (usePeriodic)
             inputs.push_back(boxTensor);
         for (const string& name : globalNames)
@@ -150,7 +150,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
 
     // Convert the PyTorch model into a CUDA Graph
-    if (useGraph && !graphCaptured) {
+    if (useGraph && graphs.find(includeForces) == graphs.end()) {
 
         // Get a stream for a graph capture
         c10::cuda::CUDAStream stream = c10::cuda::getStreamFromPool(false, posTensor.device().index());
@@ -161,16 +161,15 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
         // Capture the graph
-        graph.capture_begin();
+        graphs[includeForces].capture_begin();
         graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
-        graph.capture_end();
-        graphCaptured = true;
+        graphs[includeForces].capture_end();
     }
 
     // Execute the PyTorch model
     if (useGraph)
         // Execute the corresponding CUDA Graph
-        graph.replay();
+        graphs[includeForces].replay();
     else
         // Execute the PyTorch model directly
         graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
