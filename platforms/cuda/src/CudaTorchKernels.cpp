@@ -61,8 +61,13 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
-    // Enable CUDA Graph
+    // Enable CUDA Graphs
     useGraph = force.getPlatformProperty("CUDAGraph") == "true";
+#if !CUDA_GRAPHS_SUPPORTED
+    if (useGraph)
+        throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
+                              "You need PyTorch 1.10 or newer");
+#endif
 
     // Initialize CUDA objects for PyTorch
     const torch::Device device(torch::kCUDA, cu.getDeviceIndex()); // This implicitly initialize PyTorch
@@ -130,6 +135,11 @@ static void graphable(bool outputsForces,
 
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     int numParticles = cu.getNumAtoms();
+#if CUDA_GRAPHS_SUPPORTED
+    bool captureGraph = graphs.find(includeForces) == graphs.end();
+#else
+    bool captureGraph = false;
+#endif
 
     // Copy the atomic positions and simulation box to PyTorch tensors
     {
@@ -142,15 +152,16 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 
     // Prepare an input for the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
-    if (!useGraph || graphs.find(includeForces) == graphs.end()) {
+    if (!useGraph || captureGraph) {
         if (usePeriodic)
             inputs.push_back(boxTensor);
         for (const string& name : globalNames)
             inputs.push_back(torch::tensor(context.getParameter(name)));
     }
 
+#if CUDA_GRAPHS_SUPPORTED
     // Convert the PyTorch model into a CUDA Graph
-    if (useGraph && graphs.find(includeForces) == graphs.end()) {
+    if (useGraph && captureGraph) {
 
         // Get a stream for a graph capture
         c10::cuda::CUDAStream stream = c10::cuda::getStreamFromPool(false, posTensor.device().index());
@@ -171,6 +182,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         // Execute the corresponding CUDA Graph
         graphs[includeForces].replay();
     else
+#endif
         // Execute the PyTorch model directly
         graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
