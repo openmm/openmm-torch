@@ -53,6 +53,10 @@ def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
 
     # Compare energy and forces
     for _ in range(3):
+        # Compare just energy
+        state = context.getState(getEnergy=True, getForces=False)
+        assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
+        # Compare energy and forces
         state = context.getState(getEnergy=True, getForces=True)
         assert np.allclose(expectedEnergy, state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole))
         assert np.allclose(expectedForces, state.getForces(asNumpy=True))
