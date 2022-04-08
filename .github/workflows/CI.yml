@@ -23,13 +23,13 @@ jobs:
       matrix:
         include:
           # Oldest supported versions
-          - name: Linux (CUDA 10.2, Python 3.7, PyTorch 1.7)
+          - name: Linux (CUDA 10.2, Python 3.7, PyTorch 1.10)
             os: ubuntu-18.04
             cuda-version: "10.2.89"
-            gcc-version: "9.4.*"
+            gcc-version: "8.5.*"
             nvcc-version: "10.2"
             python-version: "3.7"
-            pytorch-version: "1.7.*"
+            pytorch-version: "1.10.*"
 
           # Latest supported versions
           - name: Linux (CUDA 11.2, Python 3.9, PyTorch 1.10)
@@ -47,7 +47,6 @@ jobs:
             nvcc-version: ""
             python-version: "3.9"
             pytorch-version: "1.9.*" # Some test fails with 1.10
-
 
     steps:
       - name: "Check out"
