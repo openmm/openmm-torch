@@ -41,10 +41,10 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-TorchForce::TorchForce(const torch::jit::Module& module) : file(), usePeriodic(false), outputsForces(false), module(module) {
+TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties) : file(), usePeriodic(false), outputsForces(false), module(module), properties(properties) {
 }
 
-TorchForce::TorchForce(const std::string& file) : TorchForce(torch::jit::load(file)) {
+TorchForce::TorchForce(const std::string& file, const map<string, string>& properties) : TorchForce(torch::jit::load(file), properties) {
     this->file = file;
 }
 

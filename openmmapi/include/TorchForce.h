@@ -55,17 +55,20 @@ public:
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule saved
      * to a file.
      *
-     * @param file   the path to the file containing the network
+     * @param file       the path to the file containing the network
+     * @param properties the property map
      */
-    TorchForce(const std::string& file);
+    TorchForce(const std::string& file,
+               const std::map<std::string, std::string>& properties = {});
     /**
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule
      * Note that this constructor makes a copy of the provided module.
      * Any changes to the module  after calling this constructor will be ignored by TorchForce.
      *
      * @param module   an instance of the torch module
+     * @param properties the property map
      */
-    TorchForce(const torch::jit::Module &module);
+    TorchForce(const torch::jit::Module &module, const std::map<std::string, std::string>& properties = {});
     /**
      * Get the path to the file containing the network.
      * If the TorchForce instance was constructed with a module, instead of a filename,

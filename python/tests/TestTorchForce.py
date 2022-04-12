@@ -37,12 +37,13 @@ def testForce(model_file, output_forces, use_module_constructor, use_cv_force, p
     # Create a force
     if use_module_constructor:
         model = pt.jit.load(model_file)
-        force = ot.TorchForce(model)
+        force = ot.TorchForce(model, {'CUDAGraph': 'false'})
     else:
-        force = ot.TorchForce(model_file)
+        force = ot.TorchForce(model_file, {'CUDAGraph': 'false'})
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
+    assert force.getProperty('CUDAGraph') == 'false'
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
         cv_force = mm.CustomCVForce('force')
