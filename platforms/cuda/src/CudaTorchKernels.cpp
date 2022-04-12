@@ -62,7 +62,13 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     int numParticles = system.getNumParticles();
 
     // Enable CUDA Graphs
-    useGraph = force.getProperty("CUDAGraph") == "true";
+    const std::string useCUDAGraphs = force.getProperty("useCUDAGraphs");
+    if (useCUDAGraphs == "true")
+        useGraph = true;
+    else if (useCUDAGraphs == "false" || useCUDAGraphs == "")
+        useGraph = false;
+    else
+        throw OpenMMException("TorchForce: invalid value of \"useCUDAGraphs\"");
 #if !CUDA_GRAPHS_SUPPORTED
     if (useGraph)
         throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
@@ -99,13 +105,17 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     addForcesKernel = cu.getKernel(program, "addForces");
 }
 
-static void graphable(bool outputsForces,
-                      bool includeForces,
-                      torch::jit::script::Module& module,
-                      vector<torch::jit::IValue>& inputs,
-                      torch::Tensor& posTensor,
-                      torch::Tensor& energyTensor,
-                      torch::Tensor& forceTensor) {
+// CUDA Graphs (https://pytorch.org/docs/master/notes/cuda.html#cuda-graphs)
+// require a static graph and persistent input and output tensors.
+// These requiments are partially enforced by using a function,
+// the tensors are passed by reference.
+static void execute_graph(bool outputsForces,
+                          bool includeForces,
+                          torch::jit::script::Module& module,
+                          vector<torch::jit::IValue>& inputs,
+                          torch::Tensor& posTensor,
+                          torch::Tensor& energyTensor,
+                          torch::Tensor& forceTensor) {
 
     // Execute the PyTorch model
     torch::Tensor energy, forces;
@@ -169,11 +179,11 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 
         // Warm up the graph
         // for (int i = 0; i < 3; i++) // TODO debug the multiple executions
-            graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+            execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
         // Capture the graph
         graphs[includeForces].capture_begin();
-        graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+        execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
         graphs[includeForces].capture_end();
     }
 
@@ -184,7 +194,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     else
 #endif
         // Execute the PyTorch model directly
-        graphable(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+        execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
 
     if (includeForces) {
         CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
