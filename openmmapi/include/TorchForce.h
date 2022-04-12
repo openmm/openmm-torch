@@ -141,10 +141,20 @@ public:
      * @param defaultValue   the default value of the parameter
      */
     void setGlobalParameterDefaultValue(int index, double defaultValue);
-
-    void setPlatformProperty(const std::string& name, const std::string& value);
-
-    const std::string& getPlatformProperty(const std::string& name) const;
+    /**
+     * Set a value of a property.
+     *
+     * @param name           the name of the property
+     * @param value          the value of the property
+     */
+    void setProperty(const std::string& name, const std::string& value);
+    /**
+     * Get a value of a property.
+     *
+     * @param name           the name of the property
+     * @return the value of the property
+     */
+    const std::string& getProperty(const std::string& name) const;
 protected:
     OpenMM::ForceImpl* createImpl() const;
 private:
@@ -153,7 +163,7 @@ private:
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
     torch::jit::Module module;
-    std::map<std::string, std::string> platformProperties;
+    std::map<std::string, std::string> properties;
     std::string emptyProperty;
 };
 

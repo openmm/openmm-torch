@@ -91,8 +91,11 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
-#if CUDA_GRAPHS_SUPPORTED
-    useGraphs = force.getPlatformProperty("CUDAGraph") == "true";
+    useGraphs = force.getProperty("CUDAGraph") == "true";
+#if !CUDA_GRAPHS_SUPPORTED
+    if (useGraph)
+        throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
+                              "You need PyTorch 1.10 or newer");
 #else
     useGraphs = false;
 #endif
