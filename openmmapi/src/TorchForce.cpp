@@ -39,8 +39,8 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-TorchForce::TorchForce(const std::string& file) : file(file), usePeriodic(false), outputsForces(false) {
-}
+TorchForce::TorchForce(const string& file, const map<string, string>& properties)
+    : file(file), usePeriodic(false), outputsForces(false), properties(properties) {}
 
 const string& TorchForce::getFile() const {
     return file;

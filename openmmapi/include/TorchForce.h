@@ -50,9 +50,11 @@ public:
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule saved
      * to a file.
      *
-     * @param file   the path to the file containing the network
+     * @param file       the path to the file containing the network
+     * @param properties the property map
      */
-    TorchForce(const std::string& file);
+    TorchForce(const std::string& file,
+               const std::map<std::string, std::string>& properties = {});
     /**
      * Get the path to the file containing the network.
      */

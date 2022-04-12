@@ -28,11 +28,11 @@ def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
         system.addParticle(1.0)
 
     # Create a force
-    force = ot.TorchForce(model_file)
+    force = ot.TorchForce(model_file, {'CUDAGraph': 'false'})
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
-    assert force.getProperty('CUDAGraph') == ''
+    assert force.getProperty('CUDAGraph') == 'false'
     if use_graph:
         force.setProperty('CUDAGraph', 'true')
         assert force.getProperty('CUDAGraph') == 'true'
