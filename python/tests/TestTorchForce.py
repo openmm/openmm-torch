@@ -32,10 +32,10 @@ def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
-    assert force.getPlatformProperty('CUDAGraph') == ''
+    assert force.getProperty('CUDAGraph') == ''
     if use_graph:
-        force.setPlatformProperty('CUDAGraph', 'true')
-        assert force.getPlatformProperty('CUDAGraph') == 'true'
+        force.setProperty('CUDAGraph', 'true')
+        assert force.getProperty('CUDAGraph') == 'true'
     system.addForce(force)
 
     # Set up a simulation

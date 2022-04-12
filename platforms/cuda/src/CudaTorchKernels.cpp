@@ -62,7 +62,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     int numParticles = system.getNumParticles();
 
     // Enable CUDA Graphs
-    useGraph = force.getPlatformProperty("CUDAGraph") == "true";
+    useGraph = force.getProperty("CUDAGraph") == "true";
 #if !CUDA_GRAPHS_SUPPORTED
     if (useGraph)
         throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
