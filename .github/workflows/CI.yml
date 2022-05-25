@@ -48,6 +48,7 @@ jobs:
             python-version: "3.9"
             pytorch-version: "1.9.*" # Some test fails with 1.10
 
+
     steps:
       - name: "Check out"
         uses: actions/checkout@v2
