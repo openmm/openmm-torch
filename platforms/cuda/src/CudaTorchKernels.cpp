@@ -78,9 +78,6 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 }
 
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
-    CUcontext primary;
-    cuDevicePrimaryCtxRetain(&primary, cu.getDevice());
-    cuCtxPushCurrent(primary);
     int numParticles = cu.getNumAtoms();
 
     // Get pointers to the atomic positions and simulation box
@@ -157,7 +154,5 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         if (!outputsForces)
             posTensor.grad().zero_();
     }
-    cuCtxPopCurrent(&primary);
-    cuDevicePrimaryCtxRelease(cu.getDevice());
     return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
 }
