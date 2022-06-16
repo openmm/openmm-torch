@@ -2,6 +2,7 @@ import NNPOps
 import openmm as mm
 import openmm.unit as unit
 import openmmtorch as ot
+import platform
 import pytest
 import torch as pt
 import torchani
@@ -18,6 +19,7 @@ class Model(pt.nn.Module):
         positions = positions.float().unsqueeze(0) * 10 # nm --> Ang
         return self.model((self.atomic_numbers, positions)).energies[0] * 2625.5 # Hartree --> kJ/mol
 
+@pytest.mark.skipif(platform.system() == 'Darwin', reason='This is no NNPOps package for MacOS')
 @pytest.mark.parametrize('use_cv_force', [True, False])
 @pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
 def testTorchANI(use_cv_force, platform):
