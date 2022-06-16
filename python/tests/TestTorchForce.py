@@ -10,7 +10,11 @@ from tempfile import NamedTemporaryFile
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
 @pytest.mark.parametrize('use_cv_force', [True, False])
-def testForce(model_file, output_forces, use_cv_force):
+@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
+def testForce(model_file, output_forces, use_cv_force, platform):
+
+    if pt.cuda.device_count() < 1 and platform == 'CUDA':
+        pytest.skip('A CUDA device is not available')
 
     # Create a random cloud of particles.
     numParticles = 10
@@ -34,7 +38,8 @@ def testForce(model_file, output_forces, use_cv_force):
 
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
-    context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
+    platform = mm.Platform.getPlatformByName(platform)
+    context = mm.Context(system, integ, platform)
     context.setPositions(positions)
     state = context.getState(getEnergy=True, getForces=True)
 
