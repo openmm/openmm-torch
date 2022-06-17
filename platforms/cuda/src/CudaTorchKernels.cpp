@@ -66,6 +66,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
+    // Switch to the PyToch context
+    // CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
+    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
+
     // Initialize CUDA objects for PyTorch
     const torch::Device device(torch::kCUDA, cu.getDeviceIndex()); // This implicitly initialize PyTorch
     module.to(device);
@@ -75,8 +79,14 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
 
+    // Switch to the CUDA context
+    CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context");
+    CUcontext context;
+    CHECK_RESULT(cuCtxPopCurrent(&context), "Failed to pop the CUDA context");
+    assert(primaryContext == context); // Sanity check that PyTorch haven't messed up the context
+    ContextSelector selector(cu); // Switch to the OpenMM context
+
     // Initialize CUDA objects for OpenMM-Torch
-    ContextSelector selector(cu);
     map<string, string> defines;
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
@@ -100,12 +110,15 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 
     // Copy the atomic positions and simulation box to PyTorch tensors
     {
-        ContextSelector selector(cu);
+        ContextSelector selector(cu); // Switch to the OpenMM context
         void* inputArgs[] = {&posData, &boxData, &cu.getPosq().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(),
                 &numParticles, cu.getPeriodicBoxVecXPointer(), cu.getPeriodicBoxVecYPointer(), cu.getPeriodicBoxVecZPointer()};
         cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
-        CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
+        CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     }
+
+    // Switch to the PyTorch context
+    cuCtxPushCurrent(primaryContext);
 
     // Prepare the input of the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
@@ -144,21 +157,26 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 forceTensor = forceTensor.to(torch::kFloat32);
             forceData = forceTensor.data_ptr<float>();
         }
-        CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the OpenMM context
+        CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the OpenMM context
 
         // Add the computed forces to the total atomic forces
         {
-            ContextSelector selector(cu);
+            ContextSelector selector(cu); // Switch to the OpenMM context
             int paddedNumAtoms = cu.getPaddedNumAtoms();
             int forceSign = (outputsForces ? 1 : -1);
             void* forceArgs[] = {&forceData, &cu.getForce().getDevicePointer(), &cu.getAtomIndexArray().getDevicePointer(), &numParticles, &paddedNumAtoms, &forceSign};
             cu.executeKernel(addForcesKernel, forceArgs, numParticles);
-            CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
+            CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
         }
 
         // Reset the forces
         if (!outputsForces)
             posTensor.grad().zero_();
     }
-    return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
+
+    // Get energy
+    const double energy = energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
+    CHECK_RESULT(cuCtxPopCurrent(&primaryContext), "Failed to pop the CUDA context");
+
+    return energy;
 }
