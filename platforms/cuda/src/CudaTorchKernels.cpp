@@ -49,7 +49,13 @@ if (result != CUDA_SUCCESS) { \
     throw OpenMMException(m.str());\
 }
 
+CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) :
+        CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
+    CHECK_RESULT(cuDevicePrimaryCtxRetain(&primaryContext, cu.getDevice()), "Failed to retain the primary context");
+}
+
 CudaCalcTorchForceKernel::~CudaCalcTorchForceKernel() {
+    cuDevicePrimaryCtxRelease(cu.getDevice());
 }
 
 void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
