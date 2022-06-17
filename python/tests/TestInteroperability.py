@@ -5,28 +5,29 @@ import platform
 import pytest
 import torch as pt
 
-class Model(pt.nn.Module):
-
-    def __init__(self):
-        super().__init__()
-        self.register_buffer('atomic_numbers', pt.tensor([[1, 1]]))
-        self.model = torchani.models.ANI2x(periodic_table_index=True)
-        self.model = NNPOps.OptimizedTorchANI(self.model, self.atomic_numbers)
-
-    def forward(self, positions):
-        positions = positions.float().unsqueeze(0) * 10 # nm --> Ang
-        return self.model((self.atomic_numbers, positions)).energies[0] * 2625.5 # Hartree --> kJ/mol
 
 @pytest.mark.skipif(platform.system() == 'Darwin', reason='There is no NNPOps package for MacOS')
 @pytest.mark.parametrize('use_cv_force', [True, False])
 @pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
 def testTorchANI(use_cv_force, platform):
 
+    if pt.cuda.device_count() < 1 and platform == 'CUDA':
+        pytest.skip('A CUDA device is not available')
+
     import NNPOps # There is no NNPOps package for MacOS
     import torchani
 
-    if pt.cuda.device_count() < 1 and platform == 'CUDA':
-        pytest.skip('A CUDA device is not available')
+    class Model(pt.nn.Module):
+
+        def __init__(self):
+            super().__init__()
+            self.register_buffer('atomic_numbers', pt.tensor([[1, 1]]))
+            self.model = torchani.models.ANI2x(periodic_table_index=True)
+            self.model = NNPOps.OptimizedTorchANI(self.model, self.atomic_numbers)
+
+        def forward(self, positions):
+            positions = positions.float().unsqueeze(0) * 10 # nm --> Ang
+            return self.model((self.atomic_numbers, positions)).energies[0] * 2625.5 # Hartree --> kJ/mol
 
     # Create a system
     system = mm.System()
