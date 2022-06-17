@@ -3,6 +3,7 @@ import openmm.unit as unit
 import openmmtorch as ot
 import platform
 import pytest
+from tempfile import NamedTemporaryFile
 import torch as pt
 
 
@@ -35,35 +36,36 @@ def testTorchANI(use_cv_force, platform):
         system.addParticle(1.0)
     positions = pt.tensor([[-5, 0.0, 0.0], [5, 0.0, 0.0]], requires_grad=True)
 
-    # Create a model
-    model_file = 'model.pt'
-    pt.jit.script(Model()).save(model_file)
+    with NamedTemporaryFile() as model_file:
 
-    # Compute reference energy and forces
-    model = pt.jit.load(model_file)
-    ref_energy = model(positions)
-    ref_energy.backward()
-    ref_forces = positions.grad
+        # Save the model
+        pt.jit.script(Model()).save(model_file.name)
 
-    # Create a force
-    force = ot.TorchForce(model_file)
-    if use_cv_force:
-        # Wrap TorchForce into CustomCVForce
-        cv_force = mm.CustomCVForce('force')
-        cv_force.addCollectiveVariable('force', force)
-        system.addForce(cv_force)
-    else:
-        system.addForce(force)
+        # Compute reference energy and forces
+        model = pt.jit.load(model_file)
+        ref_energy = model(positions)
+        ref_energy.backward()
+        ref_forces = positions.grad
 
-    # Compute energy and forces
-    integ = mm.VerletIntegrator(1.0)
-    platform = mm.Platform.getPlatformByName(platform)
-    context = mm.Context(system, integ, platform)
-    context.setPositions(positions.detach().numpy())
-    state = context.getState(getEnergy=True, getForces=True)
-    energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
-    forces = state.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole/unit.nanometers)
+        # Create a force
+        force = ot.TorchForce(model_file.name)
+        if use_cv_force:
+            # Wrap TorchForce into CustomCVForce
+            cv_force = mm.CustomCVForce('force')
+            cv_force.addCollectiveVariable('force', force)
+            system.addForce(cv_force)
+        else:
+            system.addForce(force)
 
-    # Check energy and forces
-    assert pt.allclose(ref_energy, pt.tensor(energy, dtype=ref_energy.dtype))
-    assert pt.allclose(ref_forces, pt.tensor(forces, dtype=ref_forces.dtype))
+        # Compute energy and forces
+        integ = mm.VerletIntegrator(1.0)
+        platform = mm.Platform.getPlatformByName(platform)
+        context = mm.Context(system, integ, platform)
+        context.setPositions(positions.detach().numpy())
+        state = context.getState(getEnergy=True, getForces=True)
+        energy = state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole)
+        forces = state.getForces(asNumpy=True).value_in_unit(unit.kilojoules_per_mole/unit.nanometers)
+
+        # Check energy and forces
+        assert pt.allclose(ref_energy, pt.tensor(energy, dtype=ref_energy.dtype))
+        assert pt.allclose(ref_forces, pt.tensor(forces, dtype=ref_forces.dtype))
