@@ -67,7 +67,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     int numParticles = system.getNumParticles();
 
     // Switch to the PyToch context
-    // CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
+    CUcontext context;
+    CHECK_RESULT(cuCtxGetCurrent(&context), "Failed to get the CUDA context");
+    if (context)
+        CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Initialize CUDA objects for PyTorch
@@ -81,7 +84,6 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 
     // Switch to the CUDA context
     CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context");
-    CUcontext context;
     CHECK_RESULT(cuCtxPopCurrent(&context), "Failed to pop the CUDA context");
     assert(primaryContext == context); // Sanity check that PyTorch haven't messed up the context
     ContextSelector selector(cu); // Switch to the OpenMM context
