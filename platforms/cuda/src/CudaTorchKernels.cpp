@@ -120,7 +120,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
 
     // Switch to the PyTorch context
-    cuCtxPushCurrent(primaryContext);
+    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Prepare the input of the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
@@ -177,8 +177,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
 
     // Get energy
+    CUcontext ctx;
     const double energy = energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
-    CHECK_RESULT(cuCtxPopCurrent(&primaryContext), "Failed to pop the CUDA context");
+    CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
+    assert(primaryContext == ctx); // Check that the correct context was popped
 
     return energy;
 }
