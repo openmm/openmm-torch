@@ -51,6 +51,7 @@ if (result != CUDA_SUCCESS) { \
 
 CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) :
         CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
+    // Explicitly activate the primary context
     CHECK_RESULT(cuDevicePrimaryCtxRetain(&primaryContext, cu.getDevice()), "Failed to retain the primary context");
 }
 
@@ -66,10 +67,12 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
-    // Switch to the PyToch context
-    CUcontext context;
-    CHECK_RESULT(cuCtxGetCurrent(&context), "Failed to get the CUDA context");
-    if (context)
+    // Switch to the PyTorch context
+    // NOTE: Pytorch is always using the primary context.
+    //       It makes the primary context current, if it is not a case.
+    CUcontext ctx;
+    CHECK_RESULT(cuCtxGetCurrent(&ctx), "Failed to get the CUDA context");
+    if (ctx)
         CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
@@ -82,10 +85,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
 
-    // Switch to the CUDA context
-    CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context");
-    CHECK_RESULT(cuCtxPopCurrent(&context), "Failed to pop the CUDA context");
-    assert(primaryContext == context); // Sanity check that PyTorch haven't messed up the context
+    // Switch to the OpenMM context
+    CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the OpenMM context
+    CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
+    assert(primaryContext == ctx); // Check that PyTorch haven't messed up the context
     ContextSelector selector(cu); // Switch to the OpenMM context
 
     // Initialize CUDA objects for OpenMM-Torch
