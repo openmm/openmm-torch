@@ -67,13 +67,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         globalNames.push_back(force.getGlobalParameterName(i));
     int numParticles = system.getNumParticles();
 
-    // Switch to the PyTorch context
+    // Push the PyTorch context
     // NOTE: Pytorch is always using the primary context.
     //       It makes the primary context current, if it is not a case.
-    CUcontext ctx;
-    CHECK_RESULT(cuCtxGetCurrent(&ctx), "Failed to get the CUDA context");
-    if (ctx)
-        CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Initialize CUDA objects for PyTorch
@@ -85,13 +81,13 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
 
-    // Switch to the OpenMM context
-    CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the OpenMM context
+    // Pop the PyToch context
+    CUcontext ctx;
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
-    assert(primaryContext == ctx); // Check that PyTorch haven't messed up the context
-    ContextSelector selector(cu); // Switch to the OpenMM context
+    assert(primaryContext == ctx); // Check that PyTorch haven't messed up the context stack
 
     // Initialize CUDA objects for OpenMM-Torch
+    ContextSelector selector(cu); // Switch to the OpenMM context
     map<string, string> defines;
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
@@ -122,7 +118,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     }
 
-    // Switch to the PyTorch context
+    // Push to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Prepare the input of the PyTorch model
@@ -180,8 +176,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
 
     // Get energy
+    const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
+
+    // Pop to the PyTorch context
     CUcontext ctx;
-    const double energy = energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
     assert(primaryContext == ctx); // Check that the correct context was popped
 
