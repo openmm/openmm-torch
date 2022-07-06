@@ -97,6 +97,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     int numParticles = cu.getNumAtoms();
 
+    // Push to the PyTorch context
+    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
+
     // Get pointers to the atomic positions and simulation box
     void* posData;
     void* boxData;
@@ -117,9 +120,6 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         cu.executeKernel(copyInputsKernel, inputArgs, numParticles);
         CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     }
-
-    // Push to the PyTorch context
-    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Prepare the input of the PyTorch model
     vector<torch::jit::IValue> inputs = {posTensor};
