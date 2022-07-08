@@ -9,13 +9,18 @@ from tempfile import NamedTemporaryFile
 @pytest.mark.parametrize('model_file, output_forces,',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
-def testForce(model_file, output_forces):
+@pytest.mark.parametrize('use_cv_force', [True, False])
+@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
+def testForce(model_file, output_forces, use_cv_force, platform):
+
+    if pt.cuda.device_count() < 1 and platform == 'CUDA':
+        pytest.skip('A CUDA device is not available')
 
     # Create a random cloud of particles.
     numParticles = 10
     system = mm.System()
     positions = np.random.rand(numParticles, 3)
-    for i in range(numParticles):
+    for _ in range(numParticles):
         system.addParticle(1.0)
 
     # Create a force
@@ -23,11 +28,18 @@ def testForce(model_file, output_forces):
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
-    system.addForce(force)
+    if use_cv_force:
+        # Wrap TorchForce into CustomCVForce
+        cv_force = mm.CustomCVForce('force')
+        cv_force.addCollectiveVariable('force', force)
+        system.addForce(cv_force)
+    else:
+        system.addForce(force)
 
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
-    context = mm.Context(system, integ, mm.Platform.getPlatformByName('Reference'))
+    platform = mm.Platform.getPlatformByName(platform)
+    context = mm.Context(system, integ, platform)
     context.setPositions(positions)
     state = context.getState(getEnergy=True, getForces=True)
 
