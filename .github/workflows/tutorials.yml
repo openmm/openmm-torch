@@ -20,7 +20,7 @@ jobs:
       - name: "Check out"
         uses: actions/checkout@v2
 
-      - name: "Install dependencies with conda"
+      - name: "Install dependencies with Mamba"
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: test
