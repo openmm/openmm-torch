@@ -77,10 +77,11 @@ jobs:
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
       - uses: conda-incubator/setup-miniconda@v2
-        name: "Install dependencies with conda"
+        name: "Install dependencies with Mamba"
         with:
           activate-environment: build
           environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
 
       - name: "List conda packages"
