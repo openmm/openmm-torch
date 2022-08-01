@@ -25,6 +25,7 @@ jobs:
         with:
           activate-environment: test
           environment-file: devtools/conda-envs/test-tutorials.yml
+          miniforge-variant: Mambaforge
           python-version: 3.7 # Mimics Google Colab
 
       - name: "List conda packages"
