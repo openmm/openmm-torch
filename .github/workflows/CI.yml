@@ -84,6 +84,7 @@ jobs:
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
         env:
+          # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
           CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
 
       - name: "List conda packages"
