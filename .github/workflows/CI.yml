@@ -84,7 +84,7 @@ jobs:
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
         env:
-          CONDA_OVERRIDE_CUDA: 11.2
+          CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
 
       - name: "List conda packages"
         shell: bash -l {0}
