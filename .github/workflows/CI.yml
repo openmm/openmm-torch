@@ -33,13 +33,13 @@ jobs:
             pytorch-version: "1.11.*"
 
           # Latest supported versions
-          - name: Linux (CUDA 11.2, Python 3.10, PyTorch 1.11)
+          - name: Linux (CUDA 11.2, Python 3.10, PyTorch 1.12)
             os: ubuntu-18.04
             cuda-version: "11.2.2"
             gcc-version: "10.3.*"
             nvcc-version: "11.2"
             python-version: "3.10"
-            pytorch-version: "1.11.*"
+            pytorch-version: "1.12.*"
 
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
@@ -83,6 +83,9 @@ jobs:
           environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
+        env:
+          # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
+          CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
 
       - name: "List conda packages"
         shell: bash -l {0}
