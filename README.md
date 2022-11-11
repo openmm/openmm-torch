@@ -27,43 +27,94 @@ If you don't have `conda` available, we recommend installing [Miniconda for Pyth
 Building from source
 --------------------
 
-This plugin uses [CMake](https://cmake.org/) as its build system.  
-Before compiling you must install [LibTorch](https://pytorch.org/cppdocs/installing.html), which is the PyTorch C++ API, by following the instructions at https://pytorch.org.
-You can then follow these steps:
+### Prerequisites
 
-1. Create a directory in which to build the plugin.
+- Minconda https://docs.conda.io/en/latest/miniconda.html#linux-installers
+- CUDA Toolkit https://developer.nvidia.com/cuda-downloads 
+- LibTorch which is the PyTorch C++ API, by following the instructions at https://pytorch.org/cppdocs/installing.html and https://pytorch.org. 
+    - to get a version for CUDA 1.16 used in our build example we use the commands:
+    ```
+        wget https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
+        unzip libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
+    ```
 
-2. Run the CMake GUI or `ccmake`, specifying your new directory as the build directory and the top
-level directory of this project as the source directory.
+### Build & install
 
-3. Press "Configure".  (Do not worry if it produces an error message about not being able to find PyTorch.)
+1. Get the source code
 
-4. Set `OPENMM_DIR` to point to the directory where OpenMM is installed.  This is needed to locate
-the OpenMM header files and libraries.  If you are unsure of what directory this is, the following
-script will print it out.
+   ```
+   git clone https://github.com/openmm/openmm-torch.git
+   cd openmm-torch
+   ```
 
-```python
-from simtk import openmm
-import os
-print(os.path.dirname(openmm.version.openmm_library_path))
+2. Set CUDA_HOME  (you may have a different path and version)
+
+   ```
+   export CUDA_HOME=/usr/local/cuda-11.6
+   ```
+
+3. Create and activate a conda environment using the provided environment file
+
+
+   ```
+   conda env create -n openmm-torch -f environment.yaml
+   conda activate openmm-torch
+   ```
+
+4. Configure 
+   ```
+   mkdir build && cd build
+
+   cmake .. -DPYTORCH_DIR=<path/to/libtorch> \
+         -DOPENMM_DIR=<path/to/openmm> \
+         -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
+   ```
+
+   Where `<path/to/libtorch>` is the path of the libtorch you have installed and `<path/to/openmm>` is the path to your openmm installation.
+      -  If you are unsure of what directory your `openmm` is in, the following script will print it out.
+         ```python
+         import openmm
+         import os
+         print(os.path.dirname(openmm.version.openmm_library_path))
+         ```
+
+   If you get errors in this step you can use `ccmake ..` to view the settings and make corrections.
+
+
+6. Build
+   ```
+   make
+   make PythonInstall
+   ```
+
+7. Test
+   ```
+   make test
+   ```
+
+8. Install
+   ```
+   make install
+   ```
+
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+
 ```
+python -c "from openmmtorch import TorchForce"
+```
+Should complete without error.
 
-5. Set `PYTORCH_DIR` to point to the directory where you installed the LibTorch.
 
-6. Set `CMAKE_INSTALL_PREFIX` to the directory where the plugin should be installed.  Usually,
-this will be the same as `OPENMM_DIR`, so the plugin will be added to your OpenMM installation.
+### Build without CUDA
 
-7. If you plan to build the OpenCL platform, make sure that `OPENCL_INCLUDE_DIR` and
-`OPENCL_LIBRARY` are set correctly, and that `NN_BUILD_OPENCL_LIB` is selected.
+If you do not have CUDA then you can build using the steps above but with a few differences:
+- make sure you download the CPU version of `libtorch` e.g:
 
-8. If you plan to build the CUDA platform, make sure that `CUDA_TOOLKIT_ROOT_DIR` is set correctly
-and that `NN_BUILD_CUDA_LIB` is selected.
+    `wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcpu.zip`
 
-9. Press "Configure" again if necessary, then press "Generate".
+- Ingore step 2.
+- `cmake` should correctly identify you do not have CUDA and set the variables, if it does not you can use `ccmake ..` to set  `NN_BUILD_CUDA_LIB=OFF`.
 
-10. Use the build system you selected to build and install the plugin.  For example, if you
-selected Unix Makefiles, type `make install` to install the plugin, and `make PythonInstall` to
-install the Python wrapper.
 
 Using the OpenMM PyTorch plugin
 ===============================

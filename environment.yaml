@@ -1,0 +1,7 @@
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - openmm
+  - cudnn
+  - swig=3
