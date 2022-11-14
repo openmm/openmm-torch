@@ -27,18 +27,20 @@ If you don't have `conda` available, we recommend installing [Miniconda for Pyth
 Building from source
 --------------------
 
-### Prerequisites
+Depending on your environment there are different instructions to follow:
+   - Linux (NO CUDA): This is for Linux OS when you do have have, or do not want to use CUDA.
+   - Linux (CUDA): This is for Linux OS when you have CUDA installed and have a CUDA device you want to use.
+   - MacOS
+
+### Linux (NO CUDA)
+
+
+#### Prerequisites
 
 - Minconda https://docs.conda.io/en/latest/miniconda.html#linux-installers
-- CUDA Toolkit https://developer.nvidia.com/cuda-downloads 
-- LibTorch which is the PyTorch C++ API, by following the instructions at https://pytorch.org/cppdocs/installing.html and https://pytorch.org. 
-    - to get a version for CUDA 1.16 used in our build example we use the commands:
-    ```
-        wget https://download.pytorch.org/libtorch/cu116/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
-        unzip libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcu116.zip
-    ```
 
-### Build & install
+
+#### Build & install
 
 1. Get the source code
 
@@ -47,17 +49,12 @@ Building from source
    cd openmm-torch
    ```
 
-2. Set CUDA_HOME  (you may have a different path and version)
-
-   ```
-   export CUDA_HOME=/usr/local/cuda-11.6
-   ```
 
 3. Create and activate a conda environment using the provided environment file
 
 
    ```
-   conda env create -n openmm-torch -f environment.yaml
+   conda env create -n openmm-torch -f linux_cpu.yaml
    conda activate openmm-torch
    ```
 
@@ -65,21 +62,12 @@ Building from source
    ```
    mkdir build && cd build
 
-   cmake .. -DPYTORCH_DIR=<path/to/libtorch> \
-         -DOPENMM_DIR=<path/to/openmm> \
+   # set the Torch_DIR path
+   export Torch_DIR="$(python -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')"
+
+   cmake .. -DOPENMM_DIR=$CONDA_PREFIX \
          -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
    ```
-
-   Where `<path/to/libtorch>` is the path of the libtorch you have installed and `<path/to/openmm>` is the path to your openmm installation.
-      -  If you are unsure of what directory your `openmm` is in, the following script will print it out.
-         ```python
-         import openmm
-         import os
-         print(os.path.dirname(openmm.version.openmm_library_path))
-         ```
-
-   If you get errors in this step you can use `ccmake ..` to view the settings and make corrections.
-
 
 6. Build
    ```
@@ -105,15 +93,128 @@ python -c "from openmmtorch import TorchForce"
 Should complete without error.
 
 
-### Build without CUDA
+### Linux (CUDA)
 
-If you do not have CUDA then you can build using the steps above but with a few differences:
-- make sure you download the CPU version of `libtorch` e.g:
 
-    `wget https://download.pytorch.org/libtorch/cpu/libtorch-cxx11-abi-shared-with-deps-1.13.0%2Bcpu.zip`
+#### Prerequisites
 
-- Ingore step 2.
-- `cmake` should correctly identify you do not have CUDA and set the variables, if it does not you can use `ccmake ..` to set  `NN_BUILD_CUDA_LIB=OFF`.
+- Minconda https://docs.conda.io/en/latest/miniconda.html#linux-installers
+- CUDA Toolkit https://developer.nvidia.com/cuda-downloads
+
+#### Build & install
+
+1. Get the source code
+
+   ```
+   git clone https://github.com/openmm/openmm-torch.git
+   cd openmm-torch
+   ```
+
+
+2. Make sure your `$CUDA_HOME` path is set correctly to the path of your CUDA installation
+
+   ```
+   echo $CUDA_HOME
+   ```
+
+3. Create and activate a conda environment using the provided environment file
+
+   ```
+   conda env create -n openmm-torch -f linux_cuda.yaml
+   conda activate openmm-torch
+   ```
+
+
+
+4. Configure 
+   ```
+   mkdir build && cd build
+
+   # set the Torch_DIR path
+   export Torch_DIR="$(python -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')"
+
+   cmake .. -DOPENMM_DIR=$CONDA_PREFIX \
+         -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
+   ```
+
+6. Build
+   ```
+   make
+   make PythonInstall
+   ```
+
+7. Test
+   ```
+   make test
+   ```
+
+8. Install
+   ```
+   make install
+   ```
+
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+
+```
+python -c "from openmmtorch import TorchForce"
+```
+Should complete without error.
+
+
+### MacOS
+
+#### Prerequisites
+
+- Minconda https://docs.conda.io/en/latest/miniconda.html#macos-installers
+
+
+1. Get the source code
+
+   ```
+   git clone https://github.com/openmm/openmm-torch.git
+   cd openmm-torch
+   ```
+
+2. Create and activate a conda environment using the provided environment file
+
+   ```
+   conda env create -n openmm-torch -f macOS.yaml
+   conda activate openmm-torch
+   ```
+
+4. Configure 
+   ```
+   mkdir build && cd build
+
+   # set the Torch_DIR path
+   export Torch_DIR="$(python -c 'import torch.utils; print(torch.utils.cmake_prefix_path)')"
+
+   cmake .. -DOPENMM_DIR=$CONDA_PREFIX \
+         -DCMAKE_INSTALL_PREFIX=$CONDA_PREFIX
+   ```
+
+6. Build
+   ```
+   make
+   make PythonInstall
+   ```
+
+7. Test
+   ```
+   make test
+   ```
+
+8. Install
+   ```
+   make install
+   ```
+
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+
+```
+python -c "from openmmtorch import TorchForce"
+```
+Should complete without error.
 
 
 Using the OpenMM PyTorch plugin
