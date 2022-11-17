@@ -69,7 +69,7 @@ Depending on your environment there are different instructions to follow:
    make install
    ```
 
-Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtorch` into `python`.
 
 ```
 python -c "from openmmtorch import TorchForce"
@@ -137,7 +137,7 @@ Should complete without error.
    make install
    ```
 
-Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtorch` into `python`.
 
 ```
 python -c "from openmmtorch import TorchForce"
@@ -193,7 +193,7 @@ Should complete without error.
    make install
    ```
 
-Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtoch` into `python`.
+Your built version of openmm-torch will now be available in your conda environment. You can test this by trying to import `openmmtorch` into `python`.
 
 ```
 python -c "from openmmtorch import TorchForce"
