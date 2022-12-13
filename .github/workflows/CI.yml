@@ -32,7 +32,7 @@ jobs:
             python-version: "3.7"
             pytorch-version: "1.11.*"
 
-          # Latest supported versions
+          # Older supported versions
           - name: Linux (CUDA 11.2, Python 3.10, PyTorch 1.12)
             os: ubuntu-18.04
             cuda-version: "11.2.2"
@@ -40,6 +40,15 @@ jobs:
             nvcc-version: "11.2"
             python-version: "3.10"
             pytorch-version: "1.12.*"
+
+          # Latest supported versions
+          - name: Linux (CUDA 11.2, Python 3.11, PyTorch 1.13)
+            os: ubuntu-18.04
+            cuda-version: "11.2.2"
+            gcc-version: "10.3.*"
+            nvcc-version: "11.2"
+            python-version: "3.11"
+            pytorch-version: "1.13.*"
 
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
