@@ -42,7 +42,7 @@ TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
 }
 
 void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", 1);
+    node.setIntProperty("version", this->version);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     node.setIntProperty("forceGroup", force.getForceGroup());
@@ -55,9 +55,9 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
 }
 
 void* TorchForceProxy::deserialize(const SerializationNode& node) const {
-    if (node.getIntProperty("version") != 1)
-        throw OpenMMException("Unsupported version number");
     TorchForce* force = new TorchForce(node.getStringProperty("file"));
+    if (node.getIntProperty("version") != this->version)
+      throw OpenMMException("Unsupported version number");
     if (node.hasProperty("forceGroup"))
         force->setForceGroup(node.getIntProperty("forceGroup", 0));
     if (node.hasProperty("usesPeriodic"))

@@ -42,7 +42,8 @@ namespace OpenMM {
  */
 
 class OPENMM_EXPORT_NN TorchForceProxy : public SerializationProxy {
-public:
+  static constexpr int version = 1;
+ public:
     TorchForceProxy();
     void serialize(const void* object, SerializationNode& node) const;
     void* deserialize(const SerializationNode& node) const;
