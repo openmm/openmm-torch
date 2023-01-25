@@ -82,7 +82,7 @@ static string base64Decode(const string& in) {
     return out;
 }
 
-string encodeFromFileName(const string& fileName) {
+static string encodeFromFileName(const string& fileName) {
     stringstream ss;
     ss << ifstream(fileName).rdbuf();
     const auto fileContents = ss.str();
