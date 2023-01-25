@@ -32,10 +32,10 @@
 #include "TorchForceProxy.h"
 #include "TorchForce.h"
 #include "openmm/serialization/SerializationNode.h"
-#include<string>
-#include<fstream>
-#include<sstream>
-#include<iostream>
+#include <fstream>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
