@@ -41,50 +41,52 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-namespace detail{
-  // Based in the answers in https://stackoverflow.com/a/34571089/5155484
-  static constexpr auto base64_alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-  static std::string base64_encode(const std::string &in){
-    std::string out;
-    unsigned val=0;
-    int valb=-6;
+// Based in the answers in https://stackoverflow.com/a/34571089/5155484
+static constexpr auto base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+static string base64Encode(const string& in) {
+    string out;
+    unsigned val = 0;
+    int valb = -6;
     for (auto& c : in) {
-      val = (val<<8) + c;
-      valb += 8;
-      while (valb>=0) {
-	out.push_back(base64_alphabet[(val>>valb)&0x3F]);
-	valb-=6;
-      }
+        val = (val << 8) + c;
+        valb += 8;
+        while (valb >= 0) {
+            out.push_back(base64Alphabet[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
     }
-    if (valb>-6) out.push_back(base64_alphabet[((val<<8)>>(valb+8))&0x3F]);
-    while (out.size()%4) out.push_back('=');
+    if (valb > -6)
+        out.push_back(base64Alphabet[((val << 8) >> (valb + 8)) & 0x3F]);
+    while (out.size() % 4)
+        out.push_back('=');
     return out;
-  }
+}
 
-  static std::string base64_decode(const std::string &in) {
-    std::string out;
-    std::vector<int> T(256,-1);
-    for (int i=0; i<64; i++) T[base64_alphabet[i]] = i;
-    unsigned val=0;
-    int valb=-8;
+static string base64Decode(const string& in) {
+    string out;
+    vector<int> T(256, -1);
+    for (int i = 0; i < 64; i++)
+        T[base64Alphabet[i]] = i;
+    unsigned val = 0;
+    int valb = -8;
     for (auto& c : in) {
-      if (T[c] == -1) break;
-      val = (val<<6) + T[c];
-      valb += 6;
-      if (valb>=0) {
-	out.push_back(char((val>>valb)&0xFF));
-	valb-=8;
-      }
+        if (T[c] == -1)
+            break;
+        val = (val << 6) + T[c];
+        valb += 6;
+        if (valb >= 0) {
+            out.push_back(char((val >> valb) & 0xFF));
+            valb -= 8;
+        }
     }
     return out;
-  }
+}
 
-  std::string encodeFromFileName(const std::string &fileName){
-    std::stringstream ss;
-    ss << std::ifstream(fileName).rdbuf();
+string encodeFromFileName(const string& fileName) {
+    stringstream ss;
+    ss << ifstream(fileName).rdbuf();
     const auto fileContents = ss.str();
-    return base64_encode(fileContents);
-  }
+    return base64Encode(fileContents);
 }
 
 TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
@@ -94,11 +96,11 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     node.setIntProperty("version", 1);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
-    try{
-      node.setStringProperty("encodedFileContents", detail::encodeFromFileName(force.getFile()));
+    try {
+        node.setStringProperty("encodedFileContents", encodeFromFileName(force.getFile()));
     }
-    catch(...){
-      throw OpenMMException("Could not serialize model file.");
+    catch (...) {
+        throw OpenMMException("Could not serialize model file.");
     }
     node.setIntProperty("forceGroup", force.getForceGroup());
     node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
@@ -113,23 +115,23 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     int storedVersion = node.getIntProperty("version");
     if (storedVersion > 2)
         throw OpenMMException("Unsupported version number");
-    std::string fileName;
-    const std::string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
-    if(storedVersion == 1){
-      fileName = node.getStringProperty("file");
-      if(not storedEncodedFile.empty()){
-	const auto encodedFileContents = detail::encodeFromFileName(fileName);
-	if(storedEncodedFile.compare(encodedFileContents) != 0){
-	  throw OpenMMException("The provided model file does not match the stored one");
-	}
-      }
+    string fileName;
+    const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
+    if (storedVersion == 1) {
+        fileName = node.getStringProperty("file");
+        if (!storedEncodedFile.empty()) {
+            const auto encodedFileContents = encodeFromFileName(fileName);
+            if (storedEncodedFile.compare(encodedFileContents) != 0) {
+                throw OpenMMException("The provided model file does not match the stored one");
+            }
+        }
     }
-    if(storedVersion > 2){
-      if(not node.getStringProperty("file", "").empty()){
-	throw OpenMMException("Serializer version is incompatible with file parameter");
-      }
-      fileName = std::tmpnam(nullptr); //A unique filename
-      std::ofstream(fileName)<<detail::base64_decode(storedEncodedFile);
+    if (storedVersion > 2) {
+        if (not node.getStringProperty("file", "").empty()) {
+            throw OpenMMException("Serializer version is incompatible with file parameter");
+        }
+        fileName = tmpnam(nullptr); // A unique filename
+        ofstream(fileName) << base64Decode(storedEncodedFile);
     }
     TorchForce* force = new TorchForce(fileName);
     if (node.hasProperty("forceGroup"))
