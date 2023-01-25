@@ -91,7 +91,7 @@ TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
 }
 
 void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", this->version);
+    node.setIntProperty("version", 1);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     try{
@@ -111,7 +111,7 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
 
 void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     int storedVersion = node.getIntProperty("version");
-    if (storedVersion > this->version)
+    if (storedVersion > 2)
         throw OpenMMException("Unsupported version number");
     std::string fileName;
     const std::string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
