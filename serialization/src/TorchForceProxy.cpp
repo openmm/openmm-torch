@@ -81,7 +81,7 @@ TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
 }
 
 void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", 1);
+    node.setIntProperty("version", 2);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     try {
@@ -104,22 +104,16 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     if (storedVersion > 2)
         throw OpenMMException("Unsupported version number");
     string fileName;
-    const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
     if (storedVersion == 1) {
         fileName = node.getStringProperty("file");
-        if (!storedEncodedFile.empty()) {
-            const auto encodedFileContents = base64EncodeFromFileName(fileName);
-            if (storedEncodedFile.compare(encodedFileContents) != 0) {
-                throw OpenMMException("The provided model file does not match the stored one");
-            }
-        }
     }
-    if (storedVersion > 2) {
-        if (not node.getStringProperty("file", "").empty()) {
-            throw OpenMMException("Serializer version is incompatible with file parameter");
-        }
-        fileName = tmpnam(nullptr); // A unique filename
-        ofstream(fileName) << base64Decode(storedEncodedFile);
+    if (storedVersion == 2) {
+      const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
+      if(storedEncodedFile.empty()){
+	throw OpenMMException("Found and empty model file.");
+      }
+      fileName = tmpnam(nullptr); // A unique filename
+      ofstream(fileName) << base64Decode(storedEncodedFile);
     }
     TorchForce* force = new TorchForce(fileName);
     if (node.hasProperty("forceGroup"))
