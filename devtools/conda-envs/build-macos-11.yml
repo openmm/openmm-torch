@@ -13,3 +13,4 @@ dependencies:
   - python
   - pytorch-cpu @PYTORCH_VERSION@
   - swig <4.1
+  - openssl

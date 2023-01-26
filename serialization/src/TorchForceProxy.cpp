@@ -36,53 +36,41 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <openssl/evp.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-// Based in the answers in https://stackoverflow.com/a/34571089/5155484
-static constexpr auto base64Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-static string base64Encode(const string& in) {
-    string out;
-    unsigned val = 0;
-    int valb = -6;
-    for (auto& c : in) {
-        val = (val << 8) + c;
-        valb += 8;
-        while (valb >= 0) {
-            out.push_back(base64Alphabet[(val >> valb) & 0x3F]);
-            valb -= 6;
-        }
+static string base64Encode(const string& input) {
+    // base64 encodes 4 bytes for every 3 bytes in the input. Also it is padded to the next multiple of 4
+    const size_t expectedLength = 4 * ((input.size() + 2) / 3);
+    // An additional byte is required to store null termination
+    std::vector<unsigned char> output(expectedLength + 1, '\0');
+    std::vector<unsigned char> uInput(input.begin(), input.end());
+    const auto outputLength = EVP_EncodeBlock(output.data(), uInput.data(), input.size());
+    if (expectedLength != outputLength) {
+        throw OpenMMException("Error during model file encoding");
     }
-    if (valb > -6)
-        out.push_back(base64Alphabet[((val << 8) >> (valb + 8)) & 0x3F]);
-    while (out.size() % 4)
-        out.push_back('=');
-    return out;
+    // Remove the extra null termination character
+    return string(output.begin(), output.end() - 1);
 }
 
-static string base64Decode(const string& in) {
-    string out;
-    vector<int> T(256, -1);
-    for (int i = 0; i < 64; i++)
-        T[base64Alphabet[i]] = i;
-    unsigned val = 0;
-    int valb = -8;
-    for (auto& c : in) {
-        if (T[c] == -1)
-            break;
-        val = (val << 6) + T[c];
-        valb += 6;
-        if (valb >= 0) {
-            out.push_back(char((val >> valb) & 0xFF));
-            valb -= 8;
-        }
+static string base64Decode(const string& input) {
+    // base64 decoding yields 3 bytes for each 4 bytes of input
+    const auto expectedLength = 3 * input.size() / 4;
+    // An additional byte is required to store null termination
+    std::vector<unsigned char> output(expectedLength + 1, '\0');
+    std::vector<unsigned char> uInput(input.begin(), input.end());
+    const auto outputLength = EVP_DecodeBlock(output.data(), uInput.data(), uInput.size());
+    if (expectedLength != outputLength) {
+        throw OpenMMException("Error during model file decoding");
     }
-    return out;
+    // Remove the extra null termination character
+    return string(output.begin(), output.end() - 1);
 }
 
-static string encodeFromFileName(const string& fileName) {
+static string base64EncodeFromFileName(const string& fileName) {
     stringstream ss;
     ss << ifstream(fileName).rdbuf();
     const auto fileContents = ss.str();
@@ -97,7 +85,7 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     try {
-        node.setStringProperty("encodedFileContents", encodeFromFileName(force.getFile()));
+        node.setStringProperty("encodedFileContents", base64EncodeFromFileName(force.getFile()));
     }
     catch (...) {
         throw OpenMMException("Could not serialize model file.");
@@ -120,7 +108,7 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     if (storedVersion == 1) {
         fileName = node.getStringProperty("file");
         if (!storedEncodedFile.empty()) {
-            const auto encodedFileContents = encodeFromFileName(fileName);
+            const auto encodedFileContents = base64EncodeFromFileName(fileName);
             if (storedEncodedFile.compare(encodedFileContents) != 0) {
                 throw OpenMMException("The provided model file does not match the stored one");
             }
