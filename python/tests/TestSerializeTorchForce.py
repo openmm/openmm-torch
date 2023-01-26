@@ -1,9 +1,14 @@
 import torch
-import os
+import shutil
 import pytest
-import tempfile
 from openmm import XmlSerializer, OpenMMException
 from openmmtorch import TorchForce
+
+@pytest.fixture
+def temporal_path(tmp_path_factory):
+    temporal = tmp_path_factory.mktemp("data")
+    yield str(temporal)
+    shutil.rmtree(str(temporal))
 
 class ForceModule(torch.nn.Module):
     """A simple module that can be serialized"""
@@ -16,13 +21,8 @@ class ForceModule2(torch.nn.Module):
     def forward(self, positions):
         return torch.sum(positions**3)
 
-with tempfile.NamedTemporaryFile(delete=False) as temp:
-    model_filename = temp.name
 
-with tempfile.NamedTemporaryFile(delete=False) as temp:
-    serialized_filename = temp.name
-
-def createAndSerialize():
+def createAndSerialize(model_filename, serialized_filename):
     module = torch.jit.script(ForceModule())
     module.save(model_filename)
     torch_force = TorchForce(model_filename)
@@ -30,35 +30,38 @@ def createAndSerialize():
     with open(serialized_filename, 'w') as f:
         f.write(stored)
 
-def readXML():
-    with open(serialized_filename, 'r') as f:
+def readXML(filename):
+    with open(filename, 'r') as f:
         fileContents = f.read()
     return fileContents
 
-def deserialize():
-    other_force = XmlSerializer.deserialize(readXML())
+def deserialize(filename):
+    other_force = XmlSerializer.deserialize(readXML(filename))
 
-def test_serialize():
-    createAndSerialize()
+def test_serialize(temporal_path):
+    model_filename = temporal_path + "/model.pt"
+    serialized_filename = temporal_path+ "/stored.xml"
+    createAndSerialize(model_filename, serialized_filename)
 
-def test_deserialize():
-    createAndSerialize()
-    deserialize()
+def test_deserialize(temporal_path):
+    model_filename = temporal_path+ "/model.pt"
+    serialized_filename = temporal_path+ "/stored.xml"
+    createAndSerialize(model_filename, serialized_filename)
+    deserialize(serialized_filename)
 
-def test_fails_if_model_changed():
-    createAndSerialize()
+def test_fails_if_model_changed(temporal_path):
+    model_filename = temporal_path+ "/model.pt"
+    serialized_filename = temporal_path+ "/stored.xml"
+    createAndSerialize(model_filename, serialized_filename)
     module = torch.jit.script(ForceModule2())
     module.save(model_filename)
     with pytest.raises(OpenMMException):
-        deserialize()
+        deserialize(serialized_filename)
 
-def test_same_module_serializes_identically():
-    createAndSerialize()
+def test_same_module_serializes_identically(temporal_path):
+    model_filename = temporal_path+ "/model.pt"
+    serialized_filename = temporal_path+ "/stored.xml"
+    createAndSerialize(model_filename, serialized_filename)
     module = torch.jit.script(ForceModule())
     module.save(model_filename)
-    deserialize()
-
-@pytest.fixture(autouse=True)
-def cleanup():
-    os.remove(serialized_filename)
-    os.remove(model_filename)
+    deserialize(serialized_filename)
