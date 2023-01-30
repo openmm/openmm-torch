@@ -65,7 +65,6 @@ public:
 private:
     const TorchForce& owner;
     OpenMM::Kernel kernel;
-    torch::jit::script::Module module;
 };
 
 } // namespace TorchPlugin

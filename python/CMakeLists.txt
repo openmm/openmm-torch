@@ -2,6 +2,9 @@ set(WRAP_FILE TorchPluginWrapper.cpp)
 set(MODULE_NAME openmmtorch)
 
 # Execute SWIG to generate source code for the Python module.
+foreach(dir ${TORCH_INCLUDE_DIRS})
+    set(torchincs "${torchincs}" "-I${dir}")
+endforeach()
 
 add_custom_command(
     OUTPUT "${WRAP_FILE}"
@@ -9,6 +12,7 @@ add_custom_command(
         -python -c++
         -o "${WRAP_FILE}"
         "-I${OPENMM_DIR}/include"
+	${torchincs}
         "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"

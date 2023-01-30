@@ -34,7 +34,10 @@
 #include "openmm/internal/AssertionUtilities.h"
 #include "openmm/serialization/XmlSerializer.h"
 #include <iostream>
+#include <cstdio>
 #include <sstream>
+#include <torch/nn/pimpl.h>
+#include <torch/torch.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
@@ -42,10 +45,20 @@ using namespace std;
 
 extern "C" void registerTorchSerializationProxies();
 
-void testSerialization() {
-    // Create a Force.
+struct ExampleModuleImpl : torch::nn::Module { };
+TORCH_MODULE(ExampleModule);
 
-    TorchForce force("module.pt");
+string writeExampleModuleFile() {
+    auto fileName = string(tmpnam(nullptr)) + ".pt";
+    ExampleModule module;
+    torch::save(module, fileName);
+    return fileName;
+}
+
+void testSerializationFromFile() {
+    // Create a Force.
+    string fileName = writeExampleModuleFile();
+    TorchForce force(fileName);
     force.setForceGroup(3);
     force.addGlobalParameter("x", 1.3);
     force.addGlobalParameter("y", 2.221);
@@ -62,6 +75,11 @@ void testSerialization() {
 
     TorchForce& force2 = *copy;
     ASSERT_EQUAL(force.getFile(), force2.getFile());
+    ostringstream bufferModule;
+    force.getModule().save(bufferModule);
+    ostringstream bufferModule2;
+    force2.getModule().save(bufferModule2);
+    ASSERT_EQUAL(bufferModule.str(), bufferModule2.str());
     ASSERT_EQUAL(force.getForceGroup(), force2.getForceGroup());
     ASSERT_EQUAL(force.getNumGlobalParameters(), force2.getNumGlobalParameters());
     for (int i = 0; i < force.getNumGlobalParameters(); i++) {
@@ -70,12 +88,13 @@ void testSerialization() {
     }
     ASSERT_EQUAL(force.usesPeriodicBoundaryConditions(), force2.usesPeriodicBoundaryConditions());
     ASSERT_EQUAL(force.getOutputsForces(), force2.getOutputsForces());
+    remove(fileName.c_str());
 }
 
 int main() {
     try {
         registerTorchSerializationProxies();
-        testSerialization();
+        testSerializationFromFile();
     }
     catch(const exception& e) {
         cout << "exception: " << e.what() << endl;
