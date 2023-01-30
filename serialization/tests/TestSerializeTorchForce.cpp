@@ -36,7 +36,6 @@
 #include <iostream>
 #include <cstdio>
 #include <sstream>
-#include <torch/nn/pimpl.h>
 #include <torch/torch.h>
 
 using namespace TorchPlugin;
