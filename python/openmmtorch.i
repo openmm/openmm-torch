@@ -1,5 +1,6 @@
 %module openmmtorch
 
+%include "factory.i"
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 %include <std_string.i>
