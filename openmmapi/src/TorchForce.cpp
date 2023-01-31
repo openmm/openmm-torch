@@ -44,8 +44,8 @@ using namespace std;
 TorchForce::TorchForce(const torch::jit::Module& module) : file(), usePeriodic(false), outputsForces(false), module(module) {
 }
 
-TorchForce::TorchForce(const std::string& i_file) : TorchForce(torch::jit::load(i_file)) {
-    this->file = i_file;
+TorchForce::TorchForce(const std::string& file) : TorchForce(torch::jit::load(file)) {
+    this->file = file;
 }
 
 const string& TorchForce::getFile() const {
