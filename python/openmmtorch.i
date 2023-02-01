@@ -11,6 +11,7 @@
 #include "OpenMMDrude.h"
 #include "openmm/RPMDIntegrator.h"
 #include "openmm/RPMDMonteCarloBarostat.h"
+#include <torch/csrc/jit/python/module_python.h>
 %}
 
 /*
@@ -25,12 +26,30 @@
     }
 }
 
+%typemap(in) const torch::jit::Module&(torch::jit::Module module) {
+    py::object o = py::reinterpret_borrow<py::object>($input);
+    module = torch::jit::as_module(o).value();
+    $1 = &module;
+}
+
+%typemap(out) const torch::jit::Module&{
+    py::object o = py::cast(const_cast<torch::jit::Module*>($1));
+    $result = o.release().ptr();
+}
+
+%typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
+    py::object o = py::reinterpret_borrow<py::object>($input);
+    $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
+}
+
 namespace TorchPlugin {
 
 class TorchForce : public OpenMM::Force {
 public:
     TorchForce(const std::string& file);
+    TorchForce(const torch::jit::Module& module);
     const std::string& getFile() const;
+    const torch::jit::Module& getModule() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
     bool usesPeriodicBoundaryConditions() const;
     void setOutputsForces(bool);

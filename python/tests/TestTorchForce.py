@@ -6,6 +6,14 @@ import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
 
+@pytest.mark.parametrize('model_file,',
+                        ['../../tests/central.pt',
+                         '../../tests/forces.pt'])
+def testConstructors(model_file):
+    force = ot.TorchForce(model_file)
+    model = pt.load(model_file)
+    force = ot.TorchForce(pt.jit.load(model_file))
+
 @pytest.mark.parametrize('model_file, output_forces,',
                         [('../../tests/central.pt', False),
                          ('../../tests/forces.pt', True)])
