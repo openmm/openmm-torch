@@ -20,7 +20,7 @@ add_custom_command(
 
 # Compile the Python module.
 
-add_custom_target(PythonInstall DEPENDS "${WRAP_FILE}")
+add_custom_target(PythonInstall DEPENDS "${WRAP_FILE}"  "${CMAKE_CURRENT_SOURCE_DIR}/setup.py")
 set(NN_PLUGIN_HEADER_DIR "${CMAKE_SOURCE_DIR}/openmmapi/include")
 set(NN_PLUGIN_LIBRARY_DIR "${CMAKE_BINARY_DIR}")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
