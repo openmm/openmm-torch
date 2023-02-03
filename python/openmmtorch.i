@@ -32,9 +32,11 @@
     $1 = &module;
 }
 
-%typemap(out) const torch::jit::Module&{
-    py::object o = py::cast(const_cast<torch::jit::Module*>($1));
-    $result = o.release().ptr();
+%typemap(out) const torch::jit::Module& {
+    auto fileName = std::tmpnam(nullptr);
+    $1->save(fileName);
+    $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
+    std::remove(fileName);
 }
 
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
