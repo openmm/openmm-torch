@@ -43,39 +43,32 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-static string base64Encode(const string& input) {
-    // base64 encodes 4 bytes for every 3 bytes in the input. Also it is padded to the next multiple of 4
-    const size_t expectedLength = 4 * ((input.size() + 2) / 3);
-    // An additional byte is required to store null termination
-    std::vector<unsigned char> output(expectedLength + 1, '\0');
-    std::vector<unsigned char> uInput(input.begin(), input.end());
-    const auto outputLength = EVP_EncodeBlock(output.data(), uInput.data(), input.size());
-    if (expectedLength != outputLength) {
-        throw OpenMMException("Error during model file encoding");
-    }
-    // Remove the extra null termination character
-    return string(output.begin(), output.end() - 1);
-}
-
-static string base64Decode(const string& input) {
-    // base64 decoding yields 3 bytes for each 4 bytes of input
-    const auto expectedLength = 3 * input.size() / 4;
-    // An additional byte is required to store null termination
-    std::vector<unsigned char> output(expectedLength + 1, '\0');
-    std::vector<unsigned char> uInput(input.begin(), input.end());
-    const auto outputLength = EVP_DecodeBlock(output.data(), uInput.data(), uInput.size());
-    if (expectedLength != outputLength) {
-        throw OpenMMException("Error during model file decoding");
-    }
-    // Remove the extra null termination character
-    return string(output.begin(), output.end() - 1);
-}
-
-static string base64EncodeFromFileName(const string& fileName) {
+static string hexEncode(const string& input) {
     stringstream ss;
-    ss << ifstream(fileName).rdbuf();
-    const auto fileContents = ss.str();
-    return base64Encode(fileContents);
+    ss << hex << setfill('0');
+    for (const unsigned char& i : input) {
+        ss << setw(2) << static_cast<uint64_t>(i);
+    }
+    return ss.str();
+}
+
+static string hexDecode(const string& input) {
+    string res;
+    res.reserve(input.size() / 2);
+    for (size_t i = 0; i < input.length(); i += 2) {
+        istringstream iss(input.substr(i, 2));
+        uint64_t temp;
+        iss >> hex >> temp;
+        res += static_cast<unsigned char>(temp);
+    }
+    return res;
+}
+
+static string hexEncodeFromFileName(const string& filename) {
+    ifstream inputFile(filename, ios::binary);
+    stringstream inputStream;
+    inputStream << inputFile.rdbuf();
+    return hexEncode(inputStream.str());
 }
 
 TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
@@ -88,7 +81,7 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     try {
         auto tempFileName = std::tmpnam(nullptr);
         force.getModule().save(tempFileName);
-        node.setStringProperty("encodedFileContents", base64EncodeFromFileName(tempFileName));
+        node.setStringProperty("encodedFileContents", hexEncodeFromFileName(tempFileName));
         std::remove(tempFileName);
     }
     catch (...) {
@@ -117,7 +110,7 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
             throw OpenMMException("Found and empty model file.");
         }
         string fileName = tmpnam(nullptr); // A unique filename
-        ofstream(fileName) << base64Decode(storedEncodedFile);
+        ofstream(fileName) << hexDecode(storedEncodedFile);
         auto model = torch::jit::load(fileName);
         std::remove(fileName.c_str());
         force = new TorchForce(model);

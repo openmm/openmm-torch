@@ -18,4 +18,3 @@ dependencies:
   - swig <4.1
   - sysroot_linux-64 2.17
   - torchani
-  - openssl
