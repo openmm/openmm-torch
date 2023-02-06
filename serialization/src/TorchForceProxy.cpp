@@ -36,6 +36,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <torch/csrc/jit/serialization/import.h>
 #include <openssl/evp.h>
 
 using namespace TorchPlugin;
@@ -85,7 +86,10 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     try {
-        node.setStringProperty("encodedFileContents", base64EncodeFromFileName(force.getFile()));
+        auto tempFileName = std::tmpnam(nullptr);
+        force.getModule().save(tempFileName);
+        node.setStringProperty("encodedFileContents", base64EncodeFromFileName(tempFileName));
+        std::remove(tempFileName);
     }
     catch (...) {
         throw OpenMMException("Could not serialize model file.");
@@ -103,19 +107,21 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     int storedVersion = node.getIntProperty("version");
     if (storedVersion > 2)
         throw OpenMMException("Unsupported version number");
-    string fileName;
+    TorchForce* force;
     if (storedVersion == 1) {
-        fileName = node.getStringProperty("file");
+        string fileName = node.getStringProperty("file");
+        force = new TorchForce(fileName);
+    } else if (storedVersion == 2) {
+        const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
+        if (storedEncodedFile.empty()) {
+            throw OpenMMException("Found and empty model file.");
+        }
+        string fileName = tmpnam(nullptr); // A unique filename
+        ofstream(fileName) << base64Decode(storedEncodedFile);
+        auto model = torch::jit::load(fileName);
+        std::remove(fileName.c_str());
+        force = new TorchForce(model);
     }
-    if (storedVersion == 2) {
-      const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
-      if(storedEncodedFile.empty()){
-	throw OpenMMException("Found and empty model file.");
-      }
-      fileName = tmpnam(nullptr); // A unique filename
-      ofstream(fileName) << base64Decode(storedEncodedFile);
-    }
-    TorchForce* force = new TorchForce(fileName);
     if (node.hasProperty("forceGroup"))
         force->setForceGroup(node.getIntProperty("forceGroup", 0));
     if (node.hasProperty("usesPeriodic"))

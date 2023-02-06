@@ -73,7 +73,6 @@ void testSerializationFromFile() {
     // Compare the two forces to see if they are identical.
 
     TorchForce& force2 = *copy;
-    ASSERT_EQUAL(force.getFile(), force2.getFile());
     ostringstream bufferModule;
     force.getModule().save(bufferModule);
     ostringstream bufferModule2;
