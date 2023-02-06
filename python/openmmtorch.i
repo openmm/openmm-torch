@@ -36,6 +36,7 @@
     auto fileName = std::tmpnam(nullptr);
     $1->save(fileName);
     $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
+    //This typemap assumes that torch does not require the file to exist after construction
     std::remove(fileName);
 }
 
