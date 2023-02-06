@@ -23,7 +23,7 @@ extension = Extension(name='_openmmtorch',
                       libraries=['OpenMM', 'OpenMMTorch'],
                       include_dirs=[os.path.join(openmm_dir, 'include'), nn_plugin_header_dir] + torch_include_dirs,
                       library_dirs=[os.path.join(openmm_dir, 'lib'), nn_plugin_library_dir],
-                      runtime_library_dirs=[os.path.join(openmm_dir, 'lib'), torch_dir],
+                      runtime_library_dirs=[os.path.join(openmm_dir, 'lib')],
                       extra_compile_args=extra_compile_args,
                       extra_link_args=extra_link_args
                      )
