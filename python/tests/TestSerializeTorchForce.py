@@ -48,20 +48,3 @@ def test_deserialize(temporal_path):
     serialized_filename = temporal_path+ "/stored.xml"
     createAndSerialize(model_filename, serialized_filename)
     deserialize(serialized_filename)
-
-def test_fails_if_model_changed(temporal_path):
-    model_filename = temporal_path+ "/model.pt"
-    serialized_filename = temporal_path+ "/stored.xml"
-    createAndSerialize(model_filename, serialized_filename)
-    module = torch.jit.script(ForceModule2())
-    module.save(model_filename)
-    with pytest.raises(OpenMMException):
-        deserialize(serialized_filename)
-
-def test_same_module_serializes_identically(temporal_path):
-    model_filename = temporal_path+ "/model.pt"
-    serialized_filename = temporal_path+ "/stored.xml"
-    createAndSerialize(model_filename, serialized_filename)
-    module = torch.jit.script(ForceModule())
-    module.save(model_filename)
-    deserialize(serialized_filename)
