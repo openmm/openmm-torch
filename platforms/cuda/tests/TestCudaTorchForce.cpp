@@ -42,6 +42,8 @@
 #include "sfmt/SFMT.h"
 #include <cmath>
 #include <iostream>
+#include <torch/torch.h>
+#include <torch/csrc/jit/serialization/import.h>
 #include <vector>
 
 using namespace TorchPlugin;
@@ -52,7 +54,7 @@ extern "C" OPENMM_EXPORT void registerTorchCudaKernelFactories();
 
 void testForce(bool outputsForces) {
     // Create a random cloud of particles.
-    
+
     const int numParticles = 10;
     System system;
     vector<Vec3> positions(numParticles);
@@ -62,10 +64,11 @@ void testForce(bool outputsForces) {
         system.addParticle(1.0);
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
-    TorchForce* force = new TorchForce(outputsForces ? "tests/forces.pt" : "tests/central.pt");
+    auto model = torch::jit::load(outputsForces ? "tests/forces.pt" : "tests/central.pt");
+    TorchForce* force = new TorchForce(model);
     force->setOutputsForces(outputsForces);
     system.addForce(force);
-    
+
     // Compute the forces and energy.
 
     VerletIntegrator integ(1.0);
@@ -73,9 +76,9 @@ void testForce(bool outputsForces) {
     Context context(system, integ, platform);
     context.setPositions(positions);
     State state = context.getState(State::Energy | State::Forces);
-    
+
     // See if the energy is correct.  The network defines a potential of the form E(r) = |r|^2
-    
+
     double expectedEnergy = 0;
     for (int i = 0; i < numParticles; i++) {
         Vec3 pos = positions[i];
