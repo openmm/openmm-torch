@@ -32,19 +32,64 @@
 #include "TorchForceProxy.h"
 #include "TorchForce.h"
 #include "openmm/serialization/SerializationNode.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <string>
+#include <openssl/evp.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
+static string base64Encode(const string& input) {
+    // base64 encodes 4 bytes for every 3 bytes in the input. Also it is padded to the next multiple of 4
+    const size_t expectedLength = 4 * ((input.size() + 2) / 3);
+    // An additional byte is required to store null termination
+    std::vector<unsigned char> output(expectedLength + 1, '\0');
+    std::vector<unsigned char> uInput(input.begin(), input.end());
+    const auto outputLength = EVP_EncodeBlock(output.data(), uInput.data(), input.size());
+    if (expectedLength != outputLength) {
+        throw OpenMMException("Error during model file encoding");
+    }
+    // Remove the extra null termination character
+    return string(output.begin(), output.end() - 1);
+}
+
+static string base64Decode(const string& input) {
+    // base64 decoding yields 3 bytes for each 4 bytes of input
+    const auto expectedLength = 3 * input.size() / 4;
+    // An additional byte is required to store null termination
+    std::vector<unsigned char> output(expectedLength + 1, '\0');
+    std::vector<unsigned char> uInput(input.begin(), input.end());
+    const auto outputLength = EVP_DecodeBlock(output.data(), uInput.data(), uInput.size());
+    if (expectedLength != outputLength) {
+        throw OpenMMException("Error during model file decoding");
+    }
+    // Remove the extra null termination character
+    return string(output.begin(), output.end() - 1);
+}
+
+static string base64EncodeFromFileName(const string& fileName) {
+    stringstream ss;
+    ss << ifstream(fileName).rdbuf();
+    const auto fileContents = ss.str();
+    return base64Encode(fileContents);
+}
+
 TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
 }
 
 void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", 1);
+    node.setIntProperty("version", 2);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
+    try {
+        node.setStringProperty("encodedFileContents", base64EncodeFromFileName(force.getFile()));
+    }
+    catch (...) {
+        throw OpenMMException("Could not serialize model file.");
+    }
     node.setIntProperty("forceGroup", force.getForceGroup());
     node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
     node.setBoolProperty("outputsForces", force.getOutputsForces());
@@ -55,9 +100,22 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
 }
 
 void* TorchForceProxy::deserialize(const SerializationNode& node) const {
-    if (node.getIntProperty("version") != 1)
+    int storedVersion = node.getIntProperty("version");
+    if (storedVersion > 2)
         throw OpenMMException("Unsupported version number");
-    TorchForce* force = new TorchForce(node.getStringProperty("file"));
+    string fileName;
+    if (storedVersion == 1) {
+        fileName = node.getStringProperty("file");
+    }
+    if (storedVersion == 2) {
+      const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
+      if(storedEncodedFile.empty()){
+	throw OpenMMException("Found and empty model file.");
+      }
+      fileName = tmpnam(nullptr); // A unique filename
+      ofstream(fileName) << base64Decode(storedEncodedFile);
+    }
+    TorchForce* force = new TorchForce(fileName);
     if (node.hasProperty("forceGroup"))
         force->setForceGroup(node.getIntProperty("forceGroup", 0));
     if (node.hasProperty("usesPeriodic"))
