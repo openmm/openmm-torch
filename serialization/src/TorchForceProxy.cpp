@@ -37,7 +37,6 @@
 #include <sstream>
 #include <string>
 #include <torch/csrc/jit/serialization/import.h>
-#include <openssl/evp.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
