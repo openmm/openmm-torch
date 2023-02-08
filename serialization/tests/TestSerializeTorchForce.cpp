@@ -37,27 +37,17 @@
 #include <cstdio>
 #include <sstream>
 #include <torch/torch.h>
-
+#include <torch/csrc/jit/serialization/import.h>
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
 extern "C" void registerTorchSerializationProxies();
 
-struct ExampleModuleImpl : torch::nn::Module { };
+struct ExampleModuleImpl : torch::nn::Module {};
 TORCH_MODULE(ExampleModule);
 
-string writeExampleModuleFile() {
-    auto fileName = string(tmpnam(nullptr)) + ".pt";
-    ExampleModule module;
-    torch::save(module, fileName);
-    return fileName;
-}
-
-void testSerializationFromFile() {
-    // Create a Force.
-    string fileName = writeExampleModuleFile();
-    TorchForce force(fileName);
+void serializeAndDeserialize(TorchForce force) {
     force.setForceGroup(3);
     force.addGlobalParameter("x", 1.3);
     force.addGlobalParameter("y", 2.221);
@@ -86,15 +76,30 @@ void testSerializationFromFile() {
     }
     ASSERT_EQUAL(force.usesPeriodicBoundaryConditions(), force2.usesPeriodicBoundaryConditions());
     ASSERT_EQUAL(force.getOutputsForces(), force2.getOutputsForces());
-    remove(fileName.c_str());
+}
+
+void testSerializationFromModule() {
+    ExampleModule module;
+    stringstream ss;
+    torch::save(module, ss);
+    torch::jit::Module tracedModule = torch::jit::load(ss);
+    TorchForce force(tracedModule);
+    serializeAndDeserialize(force);
+}
+
+void testSerializationFromFile() {
+    string fileName = "../../tests/forces.pt";
+    TorchForce force(fileName);
+    serializeAndDeserialize(force);
 }
 
 int main() {
     try {
         registerTorchSerializationProxies();
         testSerializationFromFile();
+        testSerializationFromModule();
     }
-    catch(const exception& e) {
+    catch (const exception& e) {
         cout << "exception: " << e.what() << endl;
         return 1;
     }
