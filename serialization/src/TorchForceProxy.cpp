@@ -103,11 +103,8 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     if (storedVersion == 1) {
         string fileName = node.getStringProperty("file");
         force = new TorchForce(fileName);
-    } else if (storedVersion == 2) {
-        const string storedEncodedFile = node.getStringProperty("encodedFileContents", "");
-        if (storedEncodedFile.empty()) {
-            throw OpenMMException("Found and empty model file.");
-        }
+    } else {
+        const string storedEncodedFile = node.getStringProperty("encodedFileContents");
         string fileName = tmpnam(nullptr); // A unique filename
         ofstream(fileName) << hexDecode(storedEncodedFile);
         auto model = torch::jit::load(fileName);
