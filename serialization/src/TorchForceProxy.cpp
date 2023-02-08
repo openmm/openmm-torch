@@ -83,8 +83,8 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
         node.setStringProperty("encodedFileContents", hexEncodeFromFileName(tempFileName));
         std::remove(tempFileName);
     }
-    catch (...) {
-        throw OpenMMException("Could not serialize model file.");
+    catch (exception& ex) {
+        throw OpenMMException("TorchForceProxy: Could not serialize model. Failed with error: " + string(ex.what()));
     }
     node.setIntProperty("forceGroup", force.getForceGroup());
     node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
