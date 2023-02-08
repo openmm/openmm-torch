@@ -3,12 +3,8 @@ import shutil
 import pytest
 from openmm import XmlSerializer, OpenMMException
 from openmmtorch import TorchForce
-
-@pytest.fixture
-def temporal_path(tmp_path_factory):
-    temporal = tmp_path_factory.mktemp("data")
-    yield str(temporal)
-    shutil.rmtree(str(temporal))
+import os
+import tempfile
 
 class ForceModule(torch.nn.Module):
     """A simple module that can be serialized"""
@@ -38,13 +34,15 @@ def readXML(filename):
 def deserialize(filename):
     other_force = XmlSerializer.deserialize(readXML(filename))
 
-def test_serialize(temporal_path):
-    model_filename = temporal_path + "/model.pt"
-    serialized_filename = temporal_path+ "/stored.xml"
-    createAndSerialize(model_filename, serialized_filename)
+def test_serialize():
+    with tempfile.TemporaryDirectory() as tempdir:
+        model_filename = os.path.join(tempdir, 'model.pt')
+        serialized_filename = os.path.join(tempdir, 'stored.xml')
+        createAndSerialize(model_filename, serialized_filename)
 
-def test_deserialize(temporal_path):
-    model_filename = temporal_path+ "/model.pt"
-    serialized_filename = temporal_path+ "/stored.xml"
-    createAndSerialize(model_filename, serialized_filename)
-    deserialize(serialized_filename)
+def test_deserialize():
+    with tempfile.TemporaryDirectory() as tempdir:
+        model_filename = os.path.join(tempdir, 'model.pt')
+        serialized_filename = os.path.join(tempdir, 'stored.xml')
+        createAndSerialize(model_filename, serialized_filename)
+        deserialize(serialized_filename)
