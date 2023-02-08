@@ -44,9 +44,6 @@ using namespace std;
 
 extern "C" void registerTorchSerializationProxies();
 
-struct ExampleModuleImpl : torch::nn::Module {};
-TORCH_MODULE(ExampleModule);
-
 void serializeAndDeserialize(TorchForce force) {
     force.setForceGroup(3);
     force.addGlobalParameter("x", 1.3);
@@ -79,11 +76,9 @@ void serializeAndDeserialize(TorchForce force) {
 }
 
 void testSerializationFromModule() {
-    ExampleModule module;
-    stringstream ss;
-    torch::save(module, ss);
-    torch::jit::Module tracedModule = torch::jit::load(ss);
-    TorchForce force(tracedModule);
+    string fileName = "../../tests/forces.pt";
+    torch::jit::Module module = torch::jit::load(fileName);
+    TorchForce force(module);
     serializeAndDeserialize(force);
 }
 
