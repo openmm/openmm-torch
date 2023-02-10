@@ -35,13 +35,18 @@
 #include "openmm/Context.h"
 #include "openmm/Force.h"
 #include <string>
+#include <torch/torch.h>
 #include "internal/windowsExportTorch.h"
 
 namespace TorchPlugin {
 
 /**
  * This class implements forces that are defined by user-supplied neural networks.
- * It uses the PyTorch library to perform the computations. */
+ * It uses the PyTorch library to perform the computations.
+ * The PyTorch module can either be  passed directly as an argument to
+ * the  constructor  or loaded  from  a  file.   In either  case,  the
+ * constructor makes a copy of the  module in memory. Later changes to
+ * the original module or to the file do not affect it.*/
 
 class OPENMM_EXPORT_NN TorchForce : public OpenMM::Force {
 public:
@@ -53,9 +58,23 @@ public:
      */
     TorchForce(const std::string& file);
     /**
+     * Create a TorchForce.  The network is defined by a PyTorch ScriptModule
+     * Note that this constructor makes a copy of the provided module.
+     * Any changes to the module  after calling this constructor will be ignored by TorchForce.
+     *
+     * @param module   an instance of the torch module
+     */
+    TorchForce(const torch::jit::Module &module);
+    /**
      * Get the path to the file containing the network.
+     * If the TorchForce instance was constructed with a module, instead of a filename,
+     * this function returns an empty string.
      */
     const std::string& getFile() const;
+    /**
+     * Get the torch module currently in use.
+     */
+    const torch::jit::Module & getModule() const;
     /**
      * Set whether this force makes use of periodic boundary conditions.  If this is set
      * to true, the network must take a 3x3 tensor as its second input, which
@@ -128,6 +147,7 @@ private:
     std::string file;
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
+    torch::jit::Module module;
 };
 
 /**

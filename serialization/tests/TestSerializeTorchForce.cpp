@@ -34,18 +34,17 @@
 #include "openmm/internal/AssertionUtilities.h"
 #include "openmm/serialization/XmlSerializer.h"
 #include <iostream>
+#include <cstdio>
 #include <sstream>
-
+#include <torch/torch.h>
+#include <torch/csrc/jit/serialization/import.h>
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
 extern "C" void registerTorchSerializationProxies();
 
-void testSerialization() {
-    // Create a Force.
-
-    TorchForce force("module.pt");
+void serializeAndDeserialize(TorchForce force) {
     force.setForceGroup(3);
     force.addGlobalParameter("x", 1.3);
     force.addGlobalParameter("y", 2.221);
@@ -61,7 +60,11 @@ void testSerialization() {
     // Compare the two forces to see if they are identical.
 
     TorchForce& force2 = *copy;
-    ASSERT_EQUAL(force.getFile(), force2.getFile());
+    ostringstream bufferModule;
+    force.getModule().save(bufferModule);
+    ostringstream bufferModule2;
+    force2.getModule().save(bufferModule2);
+    ASSERT_EQUAL(bufferModule.str(), bufferModule2.str());
     ASSERT_EQUAL(force.getForceGroup(), force2.getForceGroup());
     ASSERT_EQUAL(force.getNumGlobalParameters(), force2.getNumGlobalParameters());
     for (int i = 0; i < force.getNumGlobalParameters(); i++) {
@@ -72,12 +75,26 @@ void testSerialization() {
     ASSERT_EQUAL(force.getOutputsForces(), force2.getOutputsForces());
 }
 
+void testSerializationFromModule() {
+    string fileName = "../../tests/forces.pt";
+    torch::jit::Module module = torch::jit::load(fileName);
+    TorchForce force(module);
+    serializeAndDeserialize(force);
+}
+
+void testSerializationFromFile() {
+    string fileName = "../../tests/forces.pt";
+    TorchForce force(fileName);
+    serializeAndDeserialize(force);
+}
+
 int main() {
     try {
         registerTorchSerializationProxies();
-        testSerialization();
+        testSerializationFromFile();
+        testSerializationFromModule();
     }
-    catch(const exception& e) {
+    catch (const exception& e) {
         cout << "exception: " << e.what() << endl;
         return 1;
     }

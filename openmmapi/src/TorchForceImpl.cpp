@@ -46,12 +46,8 @@ TorchForceImpl::~TorchForceImpl() {
 }
 
 void TorchForceImpl::initialize(ContextImpl& context) {
-    // Load the module from the file.
-
-    module = torch::jit::load(owner.getFile());
-
+    auto module = owner.getModule();
     // Create the kernel.
-
     kernel = context.getPlatform().createKernel(CalcTorchForceKernel::Name(), context);
     kernel.getAs<CalcTorchForceKernel>().initialize(context.getSystem(), owner, module);
 }
