@@ -32,6 +32,8 @@ namespace std {
 
 %template(property_map) map<string, string>;
 
+}
+
 %typemap(in) const torch::jit::Module&(torch::jit::Module module) {
     py::object o = py::reinterpret_borrow<py::object>($input);
     module = torch::jit::as_module(o).value();
@@ -86,5 +88,4 @@ public:
         }
     }
 };
-}
 }
