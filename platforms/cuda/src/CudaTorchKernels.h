@@ -53,13 +53,11 @@ namespace TorchPlugin {
  */
 class CudaCalcTorchForceKernel : public CalcTorchForceKernel {
 public:
-    CudaCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::CudaContext& cu) :
-            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
-    }
+    CudaCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::CudaContext& cu);
     ~CudaCalcTorchForceKernel();
     /**
      * Initialize the kernel.
-     * 
+     *
      * @param system         the System this kernel will be applied to
      * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
@@ -87,6 +85,7 @@ private:
 #if CUDA_GRAPHS_SUPPORTED
     std::map<bool, at::cuda::CUDAGraph> graphs;
 #endif
+    CUcontext primaryContext;
 };
 
 } // namespace TorchPlugin

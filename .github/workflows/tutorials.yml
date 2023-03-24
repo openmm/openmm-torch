@@ -20,11 +20,12 @@ jobs:
       - name: "Check out"
         uses: actions/checkout@v2
 
-      - name: "Install dependencies with conda"
+      - name: "Install dependencies with Mamba"
         uses: conda-incubator/setup-miniconda@v2
         with:
           activate-environment: test
           environment-file: devtools/conda-envs/test-tutorials.yml
+          miniforge-variant: Mambaforge
           python-version: 3.7 # Mimics Google Colab
 
       - name: "List conda packages"

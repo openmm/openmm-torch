@@ -6,6 +6,7 @@ dependencies:
   - cudatoolkit @CUDATOOLKIT_VERSION@
   - gxx_linux-64 @GCC_VERSION@
   - make
+  - nnpops
   - nvcc_linux-64 @NVCC_VERSION@
   - ocl-icd
   - openmm >=7.7
@@ -14,5 +15,6 @@ dependencies:
   - pytest
   - python
   - pytorch-gpu @PYTORCH_VERSION@
-  - swig
+  - swig <4.1
   - sysroot_linux-64 2.17
+  - torchani

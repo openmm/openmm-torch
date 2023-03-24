@@ -14,8 +14,10 @@ from tempfile import NamedTemporaryFile
                           ('CPU', False),
                           ('CUDA', False),
                           ('CUDA', True)])
+@pytest.mark.parametrize('use_cv_force', [True, False])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
-def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
+@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
+def testForce(model_file, output_forces, use_cv_force, platform, precision, use_graph):
 
     if pt.cuda.device_count() < 1 and platform == 'CUDA':
         pytest.skip('A CUDA device is not available')
@@ -45,6 +47,14 @@ def testEnergyForce(model_file, output_forces, platform, precision, use_graph):
         properties['Precision'] = precision
     platform = mm.Platform.getPlatformByName(platform)
     context = mm.Context(system, integrator, platform, properties)
+    if use_cv_force:
+        # Wrap TorchForce into CustomCVForce
+        cv_force = mm.CustomCVForce('force')
+        cv_force.addCollectiveVariable('force', force)
+        system.addForce(cv_force)
+    else:
+        system.addForce(force)
+
     context.setPositions(positions)
 
     # Get expected values
