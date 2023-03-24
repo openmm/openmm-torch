@@ -20,6 +20,7 @@ def testConstructors(model_file):
                         [('../../tests/central.pt', False, False,),
                          ('../../tests/forces.pt', True, False),
                          ('../../tests/forces.pt', True, True)])
+@pytest.mark.parametrize('use_graph', [True, False])
 @pytest.mark.parametrize('use_cv_force', [True, False])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
 @pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
