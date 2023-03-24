@@ -6,18 +6,24 @@ import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
 
-@pytest.mark.parametrize('model_file, output_forces',
-                        [('../../tests/central.pt', False),
-                         ('../../tests/forces.pt', True)])
-@pytest.mark.parametrize('platform, use_graph',
-                         [('Reference', False),
-                          ('CPU', False),
-                          ('CUDA', False),
-                          ('CUDA', True)])
+@pytest.mark.parametrize('model_file,',
+                        ['../../tests/central.pt',
+                         '../../tests/forces.pt'])
+def testConstructors(model_file):
+    force = ot.TorchForce(model_file)
+    model = pt.jit.load(model_file)
+    force = ot.TorchForce(pt.jit.load(model_file))
+    model = force.getModule()
+    force = ot.TorchForce(model,{'useCUDAGraphs': 'false'})
+
+@pytest.mark.parametrize('model_file, output_forces, use_module_constructor',
+                        [('../../tests/central.pt', False, False,),
+                         ('../../tests/forces.pt', True, False),
+                         ('../../tests/forces.pt', True, True)])
 @pytest.mark.parametrize('use_cv_force', [True, False])
 @pytest.mark.parametrize('precision', ['single', 'mixed', 'double'])
 @pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
-def testForce(model_file, output_forces, use_cv_force, platform, precision, use_graph):
+def testForce(model_file, output_forces, use_module_constructor, use_cv_force, platform, precision, use_graph):
 
     if pt.cuda.device_count() < 1 and platform == 'CUDA':
         pytest.skip('A CUDA device is not available')
@@ -30,7 +36,11 @@ def testForce(model_file, output_forces, use_cv_force, platform, precision, use_
         system.addParticle(1.0)
 
     # Create a force
-    force = ot.TorchForce(model_file, {'useCUDAGraphs': 'false'})
+    if use_module_constructor:
+        model = pt.jit.load(model_file)
+        force = ot.TorchForce(model, {'useCUDAGraphs': 'false'})
+    else:
+        force = ot.TorchForce(model_file, {'useCUDAGraphs': 'false'})
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces

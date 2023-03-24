@@ -13,7 +13,6 @@ LINK_DIRECTORIES("${OPENMM_DIR}/lib" "${OPENMM_DIR}/lib/plugins")
 SET(PYTORCH_DIR "" CACHE PATH "Where the PyTorch C++ API is installed")
 SET(CMAKE_PREFIX_PATH "${PYTORCH_DIR}")
 FIND_PACKAGE(Torch REQUIRED)
-#LINK_DIRECTORIES("${TENSORFLOW_DIR}/lib")
 
 # Specify the C++ version we are building for.
 SET (CMAKE_CXX_STANDARD 14)

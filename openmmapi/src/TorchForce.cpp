@@ -34,6 +34,8 @@
 #include "openmm/OpenMMException.h"
 #include "openmm/internal/AssertionUtilities.h"
 #include <fstream>
+#include <torch/torch.h>
+#include <torch/csrc/jit/serialization/import.h>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
@@ -42,8 +44,16 @@ using namespace std;
 TorchForce::TorchForce(const string& file, const map<string, string>& properties)
     : file(file), usePeriodic(false), outputsForces(false), properties(properties) {}
 
+TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties)
+  : file(), usePeriodic(false), outputsForces(false), module(module) {
+}
+
 const string& TorchForce::getFile() const {
     return file;
+}
+
+const torch::jit::Module& TorchForce::getModule() const {
+    return this->module;
 }
 
 ForceImpl* TorchForce::createImpl() const {
