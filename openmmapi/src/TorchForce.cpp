@@ -42,7 +42,8 @@ using namespace OpenMM;
 using namespace std;
 
 TorchForce::TorchForce(const string& file, const map<string, string>& properties)
-    : file(file), usePeriodic(false), outputsForces(false), properties(properties) {}
+  : TorchForce(torch::jit::load(file), properties) {
+}
 
 TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties)
   : file(), usePeriodic(false), outputsForces(false), module(module), properties(properties) {}
