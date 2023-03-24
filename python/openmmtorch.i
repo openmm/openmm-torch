@@ -29,12 +29,15 @@
 }
 
 namespace std {
-    %template(property_map) map<string, string>;
+
+%template(property_map) map<string, string>;
+
 %typemap(in) const torch::jit::Module&(torch::jit::Module module) {
     py::object o = py::reinterpret_borrow<py::object>($input);
     module = torch::jit::as_module(o).value();
     $1 = &module;
 }
+
 
 %typemap(out) const torch::jit::Module& {
     auto fileName = std::tmpnam(nullptr);
@@ -83,5 +86,5 @@ public:
         }
     }
 };
-
+}
 }
