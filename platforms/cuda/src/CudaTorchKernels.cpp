@@ -81,6 +81,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
                               "You need PyTorch 1.10 or newer");
 #endif
+    // Push the PyTorch context
+    // NOTE: Pytorch is always using the primary context.
+    //       It makes the primary context current, if it is not a case.
+    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Initialize CUDA objects for PyTorch
     const torch::Device device(torch::kCUDA, cu.getDeviceIndex()); // This implicitly initialize PyTorch
@@ -103,6 +107,11 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         boxData = boxTensor.data_ptr<float>();
         forceData = forceTensor.data_ptr<float>();
     }
+
+    // Pop the PyToch context
+    CUcontext ctx;
+    CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
+    assert(primaryContext == ctx); // Check that PyTorch haven't messed up the context stack
 
     // Initialize CUDA objects for OpenMM-Torch
     ContextSelector selector(cu);
@@ -146,7 +155,7 @@ static void execute_graph(bool outputsForces,
     forceTensor.copy_(forces.detach().to(posTensor.dtype()));
 
     // Reset the forces
-    if (includeForces and !outputsForces)
+    if (includeForces && !outputsForces)
         posTensor.grad().zero_();
 }
 
@@ -157,6 +166,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
 #else
     bool captureGraph = false;
 #endif
+    // Push the PyTorch context
+    CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
 
     // Copy the atomic positions and simulation box to PyTorch tensors
     {
@@ -216,6 +227,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             CHECK_RESULT(cuCtxSynchronize(), "Error synchronizing CUDA context"); // Synchronize before switching to the PyTorch context
         }
     }
+    // Pop to the PyTorch context
+    CUcontext ctx;
+    CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
+    assert(primaryContext == ctx); // Check that the correct context was popped
 
     return energyTensor.item<double>(); // This implicitly synchronize the PyTorch context
 }
