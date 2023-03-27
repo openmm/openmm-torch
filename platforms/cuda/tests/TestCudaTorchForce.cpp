@@ -52,7 +52,7 @@ using namespace std;
 
 extern "C" OPENMM_EXPORT void registerTorchCudaKernelFactories();
 
-void testForce(bool outputsForces) {
+void testForce(bool outputsForces, bool useCUDAGraphs) {
     // Create a random cloud of particles.
 
     const int numParticles = 10;
@@ -65,7 +65,8 @@ void testForce(bool outputsForces) {
         positions[i] = Vec3(genrand_real2(sfmt), genrand_real2(sfmt), genrand_real2(sfmt))*10;
     }
     auto model = torch::jit::load(outputsForces ? "tests/forces.pt" : "tests/central.pt");
-    TorchForce* force = new TorchForce(model);
+    std::map<std::string, std::string> options{{"CudaGraphs", useCUDAGraphs ? "true" : "false"}};
+    TorchForce* force = new TorchForce(model, options);
     force->setOutputsForces(outputsForces);
     system.addForce(force);
 
@@ -180,8 +181,10 @@ int main(int argc, char* argv[]) {
         registerTorchCudaKernelFactories();
         if (argc > 1)
             Platform::getPlatformByName("CUDA").setPropertyDefaultValue("Precision", string(argv[1]));
-        testForce(false);
-        testForce(true);
+	for(int useCUDAGraphs = 0; useCUDAGraphs<=1; useCUDAGraphs++){
+	  testForce(false, useCUDAGraphs);
+	  testForce(true, useCUDAGraphs);
+	}
         testPeriodicForce();
         testGlobal();
     }
