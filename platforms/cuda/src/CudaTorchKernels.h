@@ -34,6 +34,15 @@
 
 #include "TorchKernels.h"
 #include "openmm/cuda/CudaContext.h"
+#include "openmm/cuda/CudaArray.h"
+#include <torch/version.h>
+// Check if PyTorch supports CUDA Graphs
+// TODO remove when PyTorch 1.9.x support is dropped
+#define CUDA_GRAPHS_SUPPORTED (TORCH_VERSION_MAJOR >= 1 && TORCH_VERSION_MINOR >= 10)
+
+#if CUDA_GRAPHS_SUPPORTED
+    #include <ATen/cuda/CUDAGraph.h>
+#endif
 
 namespace TorchPlugin {
 
@@ -46,7 +55,7 @@ public:
     ~CudaCalcTorchForceKernel();
     /**
      * Initialize the kernel.
-     * 
+     *
      * @param system         the System this kernel will be applied to
      * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
@@ -61,6 +70,7 @@ public:
      * @return the potential energy due to the force
      */
     double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+
 private:
     bool hasInitializedKernel;
     OpenMM::CudaContext& cu;
@@ -70,6 +80,10 @@ private:
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;
+    std::map<bool, at::cuda::CUDAGraph> graphs;
+    std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
+    bool useGraphs;
+    void addForcesToOpenMM(torch::Tensor& forceTensor);
 };
 
 } // namespace TorchPlugin
