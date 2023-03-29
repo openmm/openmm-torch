@@ -203,6 +203,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     if (!useGraphs) {
         execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
     } else {
+#if CUDA_GRAPHS_SUPPORTED
         const auto stream = c10::cuda::getStreamFromPool(false, posTensor.get_device());
         const c10::cuda::CUDAStreamGuard guard(stream);
         // Record graph if not already done
@@ -228,6 +229,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             }
         }
         graphs[includeForces].replay();
+#endif
     }
     if (includeForces) {
         addForcesToOpenMM(forceTensor);

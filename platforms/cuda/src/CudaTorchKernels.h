@@ -80,7 +80,9 @@ private:
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;
+#if CUDA_GRAPHS_SUPPORTED
     std::map<bool, at::cuda::CUDAGraph> graphs;
+#endif
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
     void addForcesToOpenMM(torch::Tensor& forceTensor);
