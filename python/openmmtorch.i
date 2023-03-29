@@ -45,6 +45,8 @@
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
     py::object o = py::reinterpret_borrow<py::object>($input);
     $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
+}
+
 namespace std {
     %template(property_map) map<string, string>;
 }
