@@ -252,6 +252,20 @@ to return forces.
 torch_force.setOutputsForces(True)
 ```
 
+Recording the model into a CUDA graph
+-------------------------------------
+
+You can ask `TorchForce` to run the model using [CUDA graphs](https://pytorch.org/docs/stable/notes/cuda.html#cuda-graphs). Not every model will be compatible with this feature, but it can be a significant performance boost for some models. To enable it the CUDA platform must be used and an special property must be provided to `TorchForce`:
+
+```python
+torch_force.setProperty("useCUDAGraphs", "true")
+# The property can also be queried at construction
+torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
+```
+
+The first time the model is run, it will be compiled into a CUDA graph. Subsequent runs will use the compiled graph, which can be significantly faster. It is possible that compilation fails, in which case an `OpenMMException` will be raised. If that happens, you can disable CUDA graphs and try again.
+
+
 License
 =======
 
