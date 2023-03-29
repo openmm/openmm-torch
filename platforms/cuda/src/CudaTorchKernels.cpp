@@ -102,8 +102,6 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     if (useGraph)
         throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
                               "You need PyTorch 1.10 or newer");
-#else
-    useGraphs = false;
 #endif
 }
 
