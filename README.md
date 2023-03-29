@@ -116,11 +116,15 @@ module.save('model.pt')
 
 To use the exported model in a simulation, create a `TorchForce` object and add it to your `System`.  
 The constructor takes the path to the saved model as an argument.  
+Alternatively, the scripted module can be provided directly.  
 For example,
 ```python
 # Create the TorchForce from the serialized compute graph
 from openmmtorch import TorchForce
+# Construct using a serialized module:
 torch_force = TorchForce('model.pt')
+# or using an instance of the module:
+torch_force = TorchForce(module)
 
 # Add the TorchForce to your System
 system.addForce(torch_force)
