@@ -91,7 +91,6 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
-
 #if CUDA_GRAPHS_SUPPORTED
     useGraphs = true;
 #else
@@ -191,7 +190,9 @@ static void execute_graph(bool outputsForces, bool includeForces, torch::jit::sc
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     // Push to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
-    torch::Tensor energyTensor, forceTensor;
+    auto options = posTensor.options();
+    torch::Tensor energyTensor = torch::empty({0}, options);
+    torch::Tensor forceTensor  = torch::empty({0}, options);
     auto inputs = prepareTorchInputs(context);
     if (!useGraphs) {
         execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
@@ -208,7 +209,6 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             graphs[includeForces].replay();
         }
     }
-
     if (includeForces) {
         addForcesToOpenMM(forceTensor);
         // Reset the forces
