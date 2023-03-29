@@ -192,15 +192,20 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
     auto options = posTensor.options();
     torch::Tensor energyTensor = torch::empty({0}, options);
-    torch::Tensor forceTensor  = torch::empty({0}, options);
+    torch::Tensor forceTensor = torch::empty({0}, options);
     auto inputs = prepareTorchInputs(context);
     if (!useGraphs) {
         execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
     } else {
         const auto stream = c10::cuda::getStreamFromPool(false, posTensor.get_device());
         const c10::cuda::CUDAStreamGuard guard(stream);
+        // Record graph if not present
         if (graphs.find(includeForces) == graphs.end()) {
-            // Warmup the graph
+            // Warmup the graph workload before capturing.  This first
+            // run  before  capture sets  up  allocations  so that  no
+            // allocations are  needed after.  Pytorch's  allocator is
+            // stream  capture-aware and,  after warmup,  will provide
+            // record static pointers and shapes during capture.
             execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
             graphs[includeForces].capture_begin();
             execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
