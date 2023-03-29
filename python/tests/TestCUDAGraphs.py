@@ -36,8 +36,12 @@ def tryToTestForceWithModule(ModuleType):
 
 
 def testUnGraphableModelRaises():
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
     with pytest.raises(mm.OpenMMException):
         tryToTestForceWithModule(UngraphableModule)
 
 def testGraphableModelIsCorrect():
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
     tryToTestForceWithModule(GraphableModule)
