@@ -116,3 +116,12 @@ def testModuleArguments(deviceString, precision):
 
         context.setPositions(positions)
         context.getState(getEnergy=True, getForces=True)
+
+
+def testProperties():
+    """ Test that the properties are correctly set and retrieved """
+    force = ot.TorchForce('../../tests/central.pt')
+    force.setProperty('useCUDAGraphs', 'true')
+    assert force.getProperty('useCUDAGraphs') == 'true'
+    force.setProperty('useCUDAGraphs', 'false')
+    assert force.getProperty('useCUDAGraphs') == 'false'
