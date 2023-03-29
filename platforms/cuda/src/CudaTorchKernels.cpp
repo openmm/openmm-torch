@@ -91,7 +91,13 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
-    useGraphs = force.getProperty("CUDAGraph") == "true";
+    const std::string useCUDAGraphsString = force.getProperty("useCUDAGraphs");
+    if (useCUDAGraphsString == "true")
+        useGraphs = true;
+    else if (useCUDAGraphsString == "false" || useCUDAGraphsString == "")
+        useGraphs = false;
+    else
+        throw OpenMMException("TorchForce: invalid value of \"useCUDAGraphs\"");
 #if !CUDA_GRAPHS_SUPPORTED
     if (useGraph)
         throw OpenMMException("TorchForce: CUDA Graphs are not supported! "
