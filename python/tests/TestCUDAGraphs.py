@@ -7,6 +7,7 @@ import pytest
 
 class UngraphableModule(torch.nn.Module):
     def forward(self, positions):
+        torch.cuda.synchronize()
         return (torch.sum(positions**2), -2*positions)
 
 class GraphableModule(torch.nn.Module):
@@ -16,7 +17,7 @@ class GraphableModule(torch.nn.Module):
 
 def tryToTestForceWithModule(ModuleType):
     module = torch.jit.script(ModuleType())
-    torch_force = ot.TorchForce(module)
+    torch_force = ot.TorchForce(module, {'useCUDAGraphs': 'true'})
     torch_force.setOutputsForces(True)
     numParticles = 10
     system = mm.System()
