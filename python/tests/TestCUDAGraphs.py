@@ -8,17 +8,22 @@ import pytest
 class UngraphableModule(torch.nn.Module):
     def forward(self, positions):
         torch.cuda.synchronize()
-        return (torch.sum(positions**2), -2*positions)
+        return (0.5*torch.sum(positions**2), -2.0*positions)
 
 class GraphableModule(torch.nn.Module):
     def forward(self, positions):
-        energy=torch.einsum('ij,ij->i', positions, positions).sum()
-        return (energy, -2*positions)
+        energy=0.5*torch.einsum('ij,ij->i', positions, positions).sum()
+        return (energy, -2.0*positions)
 
-def tryToTestForceWithModule(ModuleType):
+class GraphableModuleOnlyEnergy(torch.nn.Module):
+    def forward(self, positions):
+        energy=0.5*torch.einsum('ij,ij->i', positions, positions).sum()
+        return (energy)
+
+def tryToTestForceWithModule(ModuleType, outputsForce):
     module = torch.jit.script(ModuleType())
     torch_force = ot.TorchForce(module, {'useCUDAGraphs': 'true'})
-    torch_force.setOutputsForces(True)
+    torch_force.setOutputsForces(outputsForce)
     numParticles = 10
     system = mm.System()
     positions = np.random.rand(numParticles, 3)
@@ -30,19 +35,25 @@ def tryToTestForceWithModule(ModuleType):
     context = mm.Context(system, integ, platform)
     context.setPositions(positions)
     state = context.getState(getEnergy=True, getForces=True)
-    expectedEnergy = np.sum(positions**2)
+    expectedEnergy = 0.5*np.sum(positions**2)
     energy = state.getPotentialEnergy().value_in_unit(mm.unit.kilojoules_per_mole)
+    force = state.getForces(asNumpy=True).value_in_unit(mm.unit.kilojoules_per_mole/mm.unit.nanometer)
     assert np.allclose(expectedEnergy, energy)
-    assert np.allclose(-2*positions, state.getForces(asNumpy=True))
+    assert np.allclose(-2.0*positions, force)
 
 
 def testUnGraphableModelRaises():
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
     with pytest.raises(mm.OpenMMException):
-        tryToTestForceWithModule(UngraphableModule)
+        tryToTestForceWithModule(UngraphableModule, True)
 
 def testGraphableModelIsCorrect():
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
-    tryToTestForceWithModule(GraphableModule)
+    tryToTestForceWithModule(GraphableModule, True)
+
+def testGraphableModelOnlyEnergyIsCorrect():
+    if not torch.cuda.is_available():
+        pytest.skip("CUDA not available")
+    tryToTestForceWithModule(GraphableModuleOnlyEnergy, False)
