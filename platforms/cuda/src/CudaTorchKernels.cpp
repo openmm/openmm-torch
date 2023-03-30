@@ -187,12 +187,15 @@ static void execute_graph(bool outputsForces, bool includeForces, torch::jit::sc
         auto outputs = module.forward(inputs).toTuple();
         energyTensor = outputs->elements()[0].toTensor();
         forceTensor = outputs->elements()[1].toTensor();
-    } else
+    } else {
         energyTensor = module.forward(inputs).toTensor();
-    // Compute force by backprogating the PyTorch model
-    if (includeForces && !outputsForces) {
-        energyTensor.backward();
-        forceTensor = posTensor.grad();
+        // Compute force by backpropagating the PyTorch model
+        if (includeForces) {
+            energyTensor.backward();
+            forceTensor = posTensor.grad().clone();
+	    // Zero the gradient to avoid accumulating it
+            posTensor.grad().zero_();
+        }
     }
 }
 
@@ -233,19 +236,12 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 }
                 throw OpenMMException(string("TorchForce Failed to capture the model into a CUDA graph. Torch reported the following error:\n") + e.what());
             }
-            // Zero the forces after capturing the graph, otherwise first call gets forces wrong
-            if (!outputsForces && includeForces) {
-                posTensor.grad().zero_();
-            }
         }
         graphs[includeForces].replay();
 #endif
     }
     if (includeForces) {
         addForcesToOpenMM(forceTensor);
-        // Reset the forces
-        if (!outputsForces)
-            posTensor.grad().zero_();
     }
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
