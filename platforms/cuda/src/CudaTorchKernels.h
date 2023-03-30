@@ -76,6 +76,7 @@ private:
     OpenMM::CudaContext& cu;
     torch::jit::script::Module module;
     torch::Tensor posTensor, boxTensor;
+    torch::Tensor energyTensor, forceTensor;
     std::vector<std::string> globalNames;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
@@ -83,7 +84,6 @@ private:
 #if CUDA_GRAPHS_SUPPORTED
     std::map<bool, at::cuda::CUDAGraph> graphs;
 #endif
-  torch::Tensor energyTensor, forceTensor;
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
     void addForcesToOpenMM(torch::Tensor& forceTensor);

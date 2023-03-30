@@ -215,11 +215,11 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
             execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
-	    auto options = boxTensor.options();
-	    //Before capturing the graph, we reset the tensors to let pytorch allocate them again
-	    // using its graph-aware allocator
-	    energyTensor = torch::empty({0}, options);
-	    forceTensor = torch::empty({0}, options);
+            auto options = boxTensor.options();
+            // Before capturing the graph, we reset the tensors to let pytorch allocate them again
+            //  using its graph-aware allocator
+            energyTensor = torch::empty({0}, options);
+            forceTensor = torch::empty({0}, options);
             graphs[includeForces].capture_begin();
             try {
                 execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
@@ -232,12 +232,12 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 }
                 throw OpenMMException(string("TorchForce Failed to capture the model into a CUDA graph. Torch reported the following error:\n") + e.what());
             }
-	    //Zero the forces after capturing the graph, otherwise first call gets forces wrong
-	    if(!outputsForces && includeForces){
-	      posTensor.grad().zero_();
-	    }
+            // Zero the forces after capturing the graph, otherwise first call gets forces wrong
+            if (!outputsForces && includeForces) {
+                posTensor.grad().zero_();
+            }
         }
-	graphs[includeForces].replay();
+        graphs[includeForces].replay();
 #endif
     }
     if (includeForces) {
