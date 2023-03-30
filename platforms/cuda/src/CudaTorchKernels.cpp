@@ -214,7 +214,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // allocations are  needed after.  Pytorch's  allocator is
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
-            execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+            for (int i = 0; i < 10; i++)
+                execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
             auto options = boxTensor.options();
             // Before capturing the graph, we reset the tensors to let pytorch allocate them again
             //  using its graph-aware allocator
