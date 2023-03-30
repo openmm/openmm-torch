@@ -24,7 +24,9 @@ class GraphableModuleOnlyEnergy(torch.nn.Module):
         return energy
 
 
-def tryToTestForceWithModule(ModuleType, outputsForce, useGraphs=False, warmup=10):
+def tryToTestForceWithModule(
+    ModuleType, outputsForce, useGraphs=False, warmup=10, numParticles=10
+):
     """Test that the force is correctly computed for a given module type.
     Warmup makes OpenMM call TorchForce execution multiple times, which might expose some bugs related to that given that with CUDA graphs the first execution is different from the rest.
     """
@@ -33,7 +35,6 @@ def tryToTestForceWithModule(ModuleType, outputsForce, useGraphs=False, warmup=1
         module, {"useCUDAGraphs": "true" if useGraphs else "false"}
     )
     torch_force.setOutputsForces(outputsForce)
-    numParticles = 10
     system = mm.System()
     positions = np.random.rand(numParticles, 3)
     for _ in range(numParticles):
@@ -62,9 +63,10 @@ def testUnGraphableModelRaises():
         tryToTestForceWithModule(UngraphableModule, outputsForce=True, useGraphs=True)
 
 
+@pytest.mark.parametrize("numParticles", [10, 10000])
 @pytest.mark.parametrize("useGraphs", [True, False])
 @pytest.mark.parametrize("warmup", [1, 10])
-def testGraphableModelOnlyEnergyIsCorrect(useGraphs, warmup):
+def testGraphableModelOnlyEnergyIsCorrect(useGraphs, warmup, numParticles):
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
     tryToTestForceWithModule(
@@ -72,14 +74,20 @@ def testGraphableModelOnlyEnergyIsCorrect(useGraphs, warmup):
         outputsForce=False,
         useGraphs=useGraphs,
         warmup=warmup,
+        numParticles=numParticles,
     )
 
 
+@pytest.mark.parametrize("numParticles", [10, 10000])
 @pytest.mark.parametrize("useGraphs", [True, False])
 @pytest.mark.parametrize("warmup", [1, 10])
-def testGraphableModelIsCorrect(useGraphs, warmup):
+def testGraphableModelIsCorrect(useGraphs, warmup, numParticles):
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
     tryToTestForceWithModule(
-        GraphableModule, outputsForce=True, useGraphs=useGraphs, warmup=warmup
+        GraphableModule,
+        outputsForce=True,
+        useGraphs=useGraphs,
+        warmup=warmup,
+        numParticles=numParticles,
     )
