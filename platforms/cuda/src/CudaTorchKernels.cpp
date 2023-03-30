@@ -219,7 +219,6 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // record static pointers and shapes during capture.
             for (int i = 0; i < 10; i++)
                 execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
-            auto options = boxTensor.options();
             graphs[includeForces].capture_begin();
             try {
                 execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
