@@ -8,7 +8,7 @@
  *                                                                            *
  * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
- * Contributors:                                                              *
+ * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
  * copy of this software and associated documentation files (the "Software"), *
