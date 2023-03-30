@@ -83,6 +83,7 @@ private:
 #if CUDA_GRAPHS_SUPPORTED
     std::map<bool, at::cuda::CUDAGraph> graphs;
 #endif
+  torch::Tensor energyTensor, forceTensor;
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
     void addForcesToOpenMM(torch::Tensor& forceTensor);
