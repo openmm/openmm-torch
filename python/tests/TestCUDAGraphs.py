@@ -8,21 +8,24 @@ import pytest
 class UngraphableModule(torch.nn.Module):
     def forward(self, positions):
         torch.cuda.synchronize()
-        return (0.5*torch.sum(positions**2), -2.0*positions)
+        return (torch.sum(positions**2), -2.0*positions)
 
 class GraphableModule(torch.nn.Module):
     def forward(self, positions):
-        energy=0.5*torch.einsum('ij,ij->i', positions, positions).sum()
+        energy=torch.einsum('ij,ij->i', positions, positions).sum()
         return (energy, -2.0*positions)
 
 class GraphableModuleOnlyEnergy(torch.nn.Module):
     def forward(self, positions):
-        energy=0.5*torch.einsum('ij,ij->i', positions, positions).sum()
+        energy=torch.einsum('ij,ij->i', positions, positions).sum()
         return (energy)
 
-def tryToTestForceWithModule(ModuleType, outputsForce):
+def tryToTestForceWithModule(ModuleType, outputsForce, useGraphs=False, warmup=10):
+    """ Test that the force is correctly computed for a given module type.
+    Warmup makes OpenMM call TorchForce execution multiple times, which might expose some bugs related to that given that with CUDA graphs the first execution is different from the rest.
+    """
     module = torch.jit.script(ModuleType())
-    torch_force = ot.TorchForce(module, {'useCUDAGraphs': 'true'})
+    torch_force = ot.TorchForce(module, {'useCUDAGraphs': 'true' if useGraphs else 'false'})
     torch_force.setOutputsForces(outputsForce)
     numParticles = 10
     system = mm.System()
@@ -34,26 +37,32 @@ def tryToTestForceWithModule(ModuleType, outputsForce):
     platform = mm.Platform.getPlatformByName('CUDA')
     context = mm.Context(system, integ, platform)
     context.setPositions(positions)
-    state = context.getState(getEnergy=True, getForces=True)
-    expectedEnergy = 0.5*np.sum(positions**2)
+    for _ in range(warmup):
+        state = context.getState(getEnergy=True, getForces=True)
+    expectedEnergy = np.sum(positions**2)
+    expectedForce = -2.0*positions
     energy = state.getPotentialEnergy().value_in_unit(mm.unit.kilojoules_per_mole)
     force = state.getForces(asNumpy=True).value_in_unit(mm.unit.kilojoules_per_mole/mm.unit.nanometer)
     assert np.allclose(expectedEnergy, energy)
-    assert np.allclose(-2.0*positions, force)
+    assert np.allclose(expectedForce, force)
 
 
 def testUnGraphableModelRaises():
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
     with pytest.raises(mm.OpenMMException):
-        tryToTestForceWithModule(UngraphableModule, True)
+        tryToTestForceWithModule(UngraphableModule, outputsForce=True, useGraphs=True)
 
-def testGraphableModelIsCorrect():
+@pytest.mark.parametrize("useGraphs", [True,False])
+@pytest.mark.parametrize("warmup", [1, 10])
+def testGraphableModelOnlyEnergyIsCorrect(useGraphs, warmup):
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
-    tryToTestForceWithModule(GraphableModule, True)
+    tryToTestForceWithModule(GraphableModuleOnlyEnergy, outputsForce=False, useGraphs=useGraphs, warmup=warmup)
 
-def testGraphableModelOnlyEnergyIsCorrect():
+@pytest.mark.parametrize("useGraphs", [True,False])
+@pytest.mark.parametrize("warmup", [1, 10])
+def testGraphableModelIsCorrect(useGraphs, warmup):
     if not torch.cuda.is_available():
         pytest.skip("CUDA not available")
-    tryToTestForceWithModule(GraphableModuleOnlyEnergy, False)
+    tryToTestForceWithModule(GraphableModule, outputsForce=True, useGraphs=useGraphs, warmup=warmup)
