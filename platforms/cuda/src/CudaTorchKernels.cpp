@@ -149,7 +149,7 @@ std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(Con
 /**
  * Add the computed forces to the total atomic forces.
  */
-void CudaCalcTorchForceKernel::addForcesToOpenMM(torch::Tensor& forceTensor) {
+void CudaCalcTorchForceKernel::addForces(torch::Tensor& forceTensor) {
     int numParticles = cu.getNumAtoms();
     // Get a pointer to the computed forces
     void* forceData = getTensorPointer(cu, forceTensor);
@@ -224,7 +224,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         graphs[includeForces].replay();
     }
     if (includeForces) {
-        addForcesToOpenMM(forceTensor);
+        addForces(forceTensor);
     }
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context

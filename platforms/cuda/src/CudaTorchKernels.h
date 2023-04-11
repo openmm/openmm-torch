@@ -78,7 +78,7 @@ private:
     std::map<bool, at::cuda::CUDAGraph> graphs;
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
-    void addForcesToOpenMM(torch::Tensor& forceTensor);
+    void addForces(torch::Tensor& forceTensor);
 };
 
 } // namespace TorchPlugin
