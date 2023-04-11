@@ -206,8 +206,13 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // allocations are  needed after.  Pytorch's  allocator is
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
+	  try{
             for (int i = 0; i < 10; i++)
                 executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+	  }
+	  catch(std::exception& e){
+	    throw OpenMMException(string("TorchForce Failed to warmup the model before graph construction. Torch reported the following error:\n") + e.what());
+	  }
             graphs[includeForces].capture_begin();
             try {
                 executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
