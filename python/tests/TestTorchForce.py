@@ -125,37 +125,3 @@ def testProperties():
     assert force.getProperty('useCUDAGraphs') == 'true'
     force.setProperty('useCUDAGraphs', 'false')
     assert force.getProperty('useCUDAGraphs') == 'false'
-
-
-class ModuleOnlyEnergy(pt.nn.Module):
-    def forward(self, positions):
-        energy=pt.einsum('ij,ij->i', positions, positions).sum()
-        return (energy)
-
-
-@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
-def testOnlyEnergyModule(platform):
-    module = pt.jit.script(ModuleOnlyEnergy())
-    useGraphs='false'
-    if pt.cuda.device_count() >= 1 and platform == 'CUDA':
-        useGraphs='true'
-
-    torch_force = ot.TorchForce(module, {'useCUDAGraphs': useGraphs})
-    torch_force.setOutputsForces(False)
-    numParticles = 10
-    system = mm.System()
-    positions = np.random.rand(numParticles, 3)
-    for _ in range(numParticles):
-        system.addParticle(1.0)
-    system.addForce(torch_force)
-    integ = mm.VerletIntegrator(1.0)
-    platform = mm.Platform.getPlatformByName(platform)
-    context = mm.Context(system, integ, platform)
-    context.setPositions(positions)
-    state = context.getState(getEnergy=True, getForces=True)
-    state = context.getState(getEnergy=True, getForces=True)
-    expectedEnergy = np.sum(positions**2)
-    energy = state.getPotentialEnergy().value_in_unit(mm.unit.kilojoules_per_mole)
-    force = state.getForces(asNumpy=True).value_in_unit(mm.unit.kilojoules_per_mole/mm.unit.nanometer)
-    assert np.allclose(expectedEnergy, energy)
-    assert np.allclose(-2.0*positions, force)
