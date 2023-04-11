@@ -36,13 +36,7 @@
 #include "openmm/cuda/CudaContext.h"
 #include "openmm/cuda/CudaArray.h"
 #include <torch/version.h>
-// Check if PyTorch supports CUDA Graphs
-// TODO remove when PyTorch 1.9.x support is dropped
-#define CUDA_GRAPHS_SUPPORTED (TORCH_VERSION_MAJOR >= 1 && TORCH_VERSION_MINOR >= 10)
-
-#if CUDA_GRAPHS_SUPPORTED
-    #include <ATen/cuda/CUDAGraph.h>
-#endif
+#include <ATen/cuda/CUDAGraph.h>
 
 namespace TorchPlugin {
 
@@ -81,9 +75,7 @@ private:
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;
-#if CUDA_GRAPHS_SUPPORTED
     std::map<bool, at::cuda::CUDAGraph> graphs;
-#endif
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
     void addForcesToOpenMM(torch::Tensor& forceTensor);
