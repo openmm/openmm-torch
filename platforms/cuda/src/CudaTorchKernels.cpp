@@ -107,14 +107,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
  */
 static void* getTensorPointer(OpenMM::CudaContext& cu, torch::Tensor& tensor) {
     void* data;
-    // TODO: simplify the logic when support for PyTorch 1.7 is dropped
     if (cu.getUseDoublePrecision()) {
-        if (!(tensor.dtype() == torch::kFloat64))
-            tensor = tensor.to(torch::kFloat64);
         data = tensor.data_ptr<double>();
     } else {
-        if (!(tensor.dtype() == torch::kFloat32))
-            tensor = tensor.to(torch::kFloat32);
         data = tensor.data_ptr<float>();
     }
     return data;
