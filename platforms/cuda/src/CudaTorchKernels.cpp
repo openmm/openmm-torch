@@ -171,7 +171,7 @@ void CudaCalcTorchForceKernel::addForces(torch::Tensor& forceTensor) {
  * the model  is not  itself graph compatible  (due to,  for instance,
  * implicit synchronizations) will result in a CUDA error.
  */
-static void execute_graph(bool outputsForces, bool includeForces, torch::jit::script::Module& module, vector<torch::jit::IValue>& inputs, torch::Tensor& posTensor, torch::Tensor& energyTensor,
+static void executeGraph(bool outputsForces, bool includeForces, torch::jit::script::Module& module, vector<torch::jit::IValue>& inputs, torch::Tensor& posTensor, torch::Tensor& energyTensor,
                           torch::Tensor& forceTensor) {
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -194,7 +194,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
     auto inputs = prepareTorchInputs(context);
     if (!useGraphs) {
-        execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+        executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
     } else {
         const auto stream = c10::cuda::getStreamFromPool(false, posTensor.get_device());
         const c10::cuda::CUDAStreamGuard guard(stream);
@@ -207,10 +207,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
             for (int i = 0; i < 10; i++)
-                execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
             graphs[includeForces].capture_begin();
             try {
-                execute_graph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
                 is_graph_captured = true;
                 graphs[includeForces].capture_end();
             }
