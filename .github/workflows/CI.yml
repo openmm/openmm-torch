@@ -25,7 +25,7 @@ jobs:
           # Oldest supported versions
           # NOTE: renable CUDA 10.2 when it supported by NNPOps (https://github.com/conda-forge/nnpops-feedstock/pull/8)
           - name: Linux (CUDA 11.0, Python 3.7, PyTorch 1.11)
-            os: ubuntu-18.04
+            os: ubuntu-latest
             cuda-version: "11.0.3"
             gcc-version: "8.5.*"
             nvcc-version: "11.0"
@@ -34,7 +34,7 @@ jobs:
 
           # Latest supported versions
           - name: Linux (CUDA 11.2, Python 3.10, PyTorch 1.12)
-            os: ubuntu-18.04
+            os: ubuntu-latest
             cuda-version: "11.2.2"
             gcc-version: "10.3.*"
             nvcc-version: "11.2"
