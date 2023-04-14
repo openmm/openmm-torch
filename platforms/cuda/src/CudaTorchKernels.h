@@ -79,6 +79,7 @@ private:
     std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
     bool useGraphs;
     void addForces(torch::Tensor& forceTensor);
+    int warmupSteps;
 };
 
 } // namespace TorchPlugin

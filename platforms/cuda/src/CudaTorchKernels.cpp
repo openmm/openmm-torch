@@ -99,6 +99,12 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         useGraphs = false;
     else
         throw OpenMMException("TorchForce: invalid value of \"useCUDAGraphs\"");
+    this->warmupSteps = 1;
+    if (useGraphs) {
+        const std::string warmupStepsString = force.getProperty("CUDAGraphWarmupSteps");
+        if (!warmupStepsString.empty())
+            this->warmupSteps = std::stoi(warmupStepsString);
+    }
 }
 
 /**
@@ -207,7 +213,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
             try {
-                for (int i = 0; i < 10; i++)
+                for (int i = 0; i < this->warmupSteps; i++)
                     executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
             }
             catch (std::exception& e) {
