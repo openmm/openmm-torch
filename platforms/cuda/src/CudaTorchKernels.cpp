@@ -108,9 +108,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 static void* getTensorPointer(OpenMM::CudaContext& cu, torch::Tensor& tensor) {
     void* data;
     if (cu.getUseDoublePrecision()) {
-        data = tensor.data_ptr<double>();
+        data = tensor.to(torch::kFloat64).data_ptr<double>();
     } else {
-        data = tensor.data_ptr<float>();
+        data = tensor.to(torch::kFloat32).data_ptr<float>();
     }
     return data;
 }
@@ -172,7 +172,7 @@ void CudaCalcTorchForceKernel::addForces(torch::Tensor& forceTensor) {
  * implicit synchronizations) will result in a CUDA error.
  */
 static void executeGraph(bool outputsForces, bool includeForces, torch::jit::script::Module& module, vector<torch::jit::IValue>& inputs, torch::Tensor& posTensor, torch::Tensor& energyTensor,
-                          torch::Tensor& forceTensor) {
+                         torch::Tensor& forceTensor) {
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
         energyTensor = outputs->elements()[0].toTensor();
@@ -183,7 +183,7 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
         if (includeForces) {
             energyTensor.backward();
             forceTensor = posTensor.grad().clone();
-	    // Zero the gradient to avoid accumulating it
+            // Zero the gradient to avoid accumulating it
             posTensor.grad().zero_();
         }
     }
@@ -206,13 +206,13 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // allocations are  needed after.  Pytorch's  allocator is
             // stream  capture-aware and,  after warmup,  will provide
             // record static pointers and shapes during capture.
-	  try{
-            for (int i = 0; i < 10; i++)
-                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
-	  }
-	  catch(std::exception& e){
-	    throw OpenMMException(string("TorchForce Failed to warmup the model before graph construction. Torch reported the following error:\n") + e.what());
-	  }
+            try {
+                for (int i = 0; i < 10; i++)
+                    executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+            }
+            catch (std::exception& e) {
+                throw OpenMMException(string("TorchForce Failed to warmup the model before graph construction. Torch reported the following error:\n") + e.what());
+            }
             graphs[includeForces].capture_begin();
             try {
                 executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
