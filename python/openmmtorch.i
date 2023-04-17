@@ -70,7 +70,7 @@ public:
     double getGlobalParameterDefaultValue(int index) const;
     void setGlobalParameterDefaultValue(int index, double defaultValue);
     void setProperty(const std::string& name, const std::string& value);
-    const std::string& getProperty(const std::string& name) const;
+    const std::map<std::string, std::string>& getProperties() const;
 
     /*
      * Add methods for casting a Force to a TorchForce.
