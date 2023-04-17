@@ -259,11 +259,17 @@ You can ask `TorchForce` to run the model using [CUDA graphs](https://pytorch.or
 
 ```python
 torch_force.setProperty("useCUDAGraphs", "true")
-# The property can also be queried at construction
+# The property can also be set at construction
 torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
 ```
 
-The first time the model is run, it will be compiled into a CUDA graph. Subsequent runs will use the compiled graph, which can be significantly faster. It is possible that compilation fails, in which case an `OpenMMException` will be raised. If that happens, you can disable CUDA graphs and try again.
+The first time the model is run, it will be compiled (also known as recording) into a CUDA graph. Subsequent runs will use the compiled graph, which can be significantly faster. It is possible that compilation fails, in which case an `OpenMMException` will be raised. If that happens, you can disable CUDA graphs and try again.
+
+It is required to run the model at least once before recording, in what is known as warmup.
+By default ```TorchForce``` will run the model just once before recording, but longer warming up might be desired. In these cases one can set the property ```CUDAGraphWarmupSteps```:
+```python
+torch_force.setProperty("CUDAGraphWarmupSteps", "12")
+```
 
 
 License
