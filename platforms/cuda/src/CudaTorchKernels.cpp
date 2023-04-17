@@ -43,12 +43,12 @@ using namespace std;
 
 // macro for checking the result of synchronization operation on CUDA
 // copied from `openmm/platforms/cuda/src/CudaParallelKernels.cpp`
-#define CHECK_RESULT(result, prefix)                                                                                                                                                                   \
-    if (result != CUDA_SUCCESS) {                                                                                                                                                                      \
-        std::stringstream m;                                                                                                                                                                           \
-        m << prefix << ": " << cu.getErrorString(result) << " (" << result << ")"                                                                                                                      \
-          << " at " << __FILE__ << ":" << __LINE__;                                                                                                                                                    \
-        throw OpenMMException(m.str());                                                                                                                                                                \
+#define CHECK_RESULT(result, prefix)                                             \
+    if (result != CUDA_SUCCESS) {                                                \
+        std::stringstream m;                                                     \
+        m << prefix << ": " << cu.getErrorString(result) << " (" << result << ")"\
+          << " at " << __FILE__ << ":" << __LINE__;                              \
+        throw OpenMMException(m.str());                                          \
     }
 
 CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) : CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
