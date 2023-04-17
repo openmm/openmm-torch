@@ -41,7 +41,13 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties) : file(), usePeriodic(false), outputsForces(false), module(module), properties(properties) {
+TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties) : file(), usePeriodic(false), outputsForces(false), module(module) {
+    const std::map<std::string, std::string> defaultProperties = {{"useCUDAGraphs", "false"}, {"CUDAGraphWarmupSteps", "1"}};
+    for (auto& property : properties) {
+        if (defaultProperties.find(property.first) == defaultProperties.end())
+            throw OpenMMException("TorchForce: Unknown property '" + property.first + "'");
+        this->properties[property.first] = property.second;
+    }
 }
 
 TorchForce::TorchForce(const std::string& file, const map<string, string>& properties) : TorchForce(torch::jit::load(file), properties) {
@@ -78,7 +84,7 @@ bool TorchForce::getOutputsForces() const {
 
 int TorchForce::addGlobalParameter(const string& name, double defaultValue) {
     globalParameters.push_back(GlobalParameterInfo(name, defaultValue));
-    return globalParameters.size()-1;
+    return globalParameters.size() - 1;
 }
 
 int TorchForce::getNumGlobalParameters() const {
@@ -111,8 +117,6 @@ void TorchForce::setProperty(const std::string& name, const std::string& value) 
     properties[name] = value;
 }
 
-const std::string& TorchForce::getProperty(const std::string& name) const {
-    if (properties.find(name) != properties.end())
-        return properties.at(name);
-    return emptyProperty;
+const std::map<std::string, std::string>& TorchForce::getProperties() const {
+    return properties;
 }

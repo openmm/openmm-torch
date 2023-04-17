@@ -152,12 +152,11 @@ public:
      */
     void setProperty(const std::string& name, const std::string& value);
     /**
-     * Get a value of a property.
-     *
-     * @param name           the name of the property
-     * @return the value of the property
+     * Get the list of properties for this instance.
+     * An unset property has an empty string as its value.
+     * @return A map of property names to values.
      */
-    const std::string& getProperty(const std::string& name) const;
+    const std::map<std::string, std::string>& getProperties() const;
 protected:
     OpenMM::ForceImpl* createImpl() const;
 private:

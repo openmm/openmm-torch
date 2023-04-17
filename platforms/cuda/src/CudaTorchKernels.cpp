@@ -92,18 +92,19 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     CUmodule program = cu.createModule(CudaTorchKernelSources::torchForce, defines);
     copyInputsKernel = cu.getKernel(program, "copyInputs");
     addForcesKernel = cu.getKernel(program, "addForces");
-    const std::string useCUDAGraphsString = force.getProperty("useCUDAGraphs");
+    auto properties = force.getProperties();
+    const std::string useCUDAGraphsString = properties["useCUDAGraphs"];
     if (useCUDAGraphsString == "true")
         useGraphs = true;
     else if (useCUDAGraphsString == "false" || useCUDAGraphsString == "")
         useGraphs = false;
     else
         throw OpenMMException("TorchForce: invalid value of \"useCUDAGraphs\"");
-    this->warmupSteps = 1;
     if (useGraphs) {
-        const std::string warmupStepsString = force.getProperty("CUDAGraphWarmupSteps");
-        if (!warmupStepsString.empty())
-            this->warmupSteps = std::stoi(warmupStepsString);
+        this->warmupSteps = std::stoi(properties["CUDAGraphWarmupSteps"]);
+        if (this->warmupSteps <= 0) {
+            throw OpenMMException("TorchForce: \"CUDAGraphWarmupSteps\" must be a positive integer");
+        }
     }
 }
 
