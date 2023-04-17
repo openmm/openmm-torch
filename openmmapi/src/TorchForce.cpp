@@ -106,6 +106,8 @@ void TorchForce::setGlobalParameterDefaultValue(int index, double defaultValue) 
 }
 
 void TorchForce::setProperty(const std::string& name, const std::string& value) {
+    if (properties.find(name) == properties.end())
+        throw OpenMMException("TorchForce: Unknown property '" + name + "'");
     properties[name] = value;
 }
 
