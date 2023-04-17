@@ -43,7 +43,7 @@ def testForce(model_file, output_forces, use_module_constructor, use_cv_force, p
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
-    assert force.getProperty('useCUDAGraphs') == 'false'
+    assert force.getProperties()['useCUDAGraphs'] == 'false'
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
         cv_force = mm.CustomCVForce('force')
@@ -122,6 +122,6 @@ def testProperties():
     """ Test that the properties are correctly set and retrieved """
     force = ot.TorchForce('../../tests/central.pt')
     force.setProperty('useCUDAGraphs', 'true')
-    assert force.getProperty('useCUDAGraphs') == 'true'
+    assert force.getProperties()['useCUDAGraphs'] == 'true'
     force.setProperty('useCUDAGraphs', 'false')
-    assert force.getProperty('useCUDAGraphs') == 'false'
+    assert force.getProperties()['useCUDAGraphs'] == 'false'
