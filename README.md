@@ -271,6 +271,21 @@ By default ```TorchForce``` will run the model just once before recording, but l
 torch_force.setProperty("CUDAGraphWarmupSteps", "12")
 ```
 
+List of available properties
+----------------------------
+
+Some ```TorchForce``` functionalities can be customized by setting properties on an instance of it. Properties can be set at construction or by using ```setProperty```. A property is a pair of key/value strings. For instance:
+
+```python
+torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
+torch_force.setProperty("useCUDAGraphs", "true")
+print(torch_force.getProperty("useCUDAGraphs")
+```
+
+Currently, the following properties are available:
+
+1. useCUDAGraphs: Turns on the CUDA graph functionality
+2. CUDAGraphWarmupSteps: When CUDA graphs are being used, controls the number of warmup calls to the model before recording.
 
 License
 =======
