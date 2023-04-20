@@ -60,15 +60,6 @@ jobs:
     steps:
 
       - uses: actions/checkout@v3
-      - uses: mamba-org/provision-with-micromamba@main
-        with:
-          environment-file: devtools/conda-envs/test_env.yaml
-          channels: conda-forge,openeye
-          extra-specs: |
-            python==3.9
-            openmm>=8.0
-            cudatoolkit==11.7
-      
       - name: "Update the conda enviroment file"
         uses: cschleiden/replace-tokens@v1
         with:
