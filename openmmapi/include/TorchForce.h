@@ -56,7 +56,7 @@ public:
      * to a file.
      *
      * @param file       the path to the file containing the network
-     * @param properties optional list of properties
+     * @param properties optional map of properties
      */
     TorchForce(const std::string& file,
                const std::map<std::string, std::string>& properties = {});
@@ -66,7 +66,7 @@ public:
      * Any changes to the module  after calling this constructor will be ignored by TorchForce.
      *
      * @param module   an instance of the torch module
-     * @param properties optional list of properties
+     * @param properties optional map of properties
      */
     TorchForce(const torch::jit::Module &module, const std::map<std::string, std::string>& properties = {});
     /**
@@ -152,8 +152,7 @@ public:
      */
     void setProperty(const std::string& name, const std::string& value);
     /**
-     * Get the list of properties for this instance.
-     * An unset property has an empty string as its value.
+     * Get the map of properties for this instance.
      * @return A map of property names to values.
      */
     const std::map<std::string, std::string>& getProperties() const;

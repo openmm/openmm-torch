@@ -278,7 +278,8 @@ Some ```TorchForce``` functionalities can be customized by setting properties on
 
 ```python
 torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
-torch_force.setProperty("useCUDAGraphs", "true")
+#Alternatively setProperty can be used to configure an already created instance.
+#torch_force.setProperty("useCUDAGraphs", "true")
 print("Current properties:")
 for property in torch_force.getProperties():
     print(property.key, property.value)
