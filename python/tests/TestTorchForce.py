@@ -37,12 +37,13 @@ def testForce(model_file, output_forces, use_module_constructor, use_cv_force, p
     # Create a force
     if use_module_constructor:
         model = pt.jit.load(model_file)
-        force = ot.TorchForce(model)
+        force = ot.TorchForce(model, {'useCUDAGraphs': 'false'})
     else:
-        force = ot.TorchForce(model_file)
+        force = ot.TorchForce(model_file, {'useCUDAGraphs': 'false'})
     assert not force.getOutputsForces() # Check the default
     force.setOutputsForces(output_forces)
     assert force.getOutputsForces() == output_forces
+    assert force.getProperties()['useCUDAGraphs'] == 'false'
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
         cv_force = mm.CustomCVForce('force')
@@ -115,3 +116,12 @@ def testModuleArguments(deviceString, precision):
 
         context.setPositions(positions)
         context.getState(getEnergy=True, getForces=True)
+
+
+def testProperties():
+    """ Test that the properties are correctly set and retrieved """
+    force = ot.TorchForce('../../tests/central.pt')
+    force.setProperty('useCUDAGraphs', 'true')
+    assert force.getProperties()['useCUDAGraphs'] == 'true'
+    force.setProperty('useCUDAGraphs', 'false')
+    assert force.getProperties()['useCUDAGraphs'] == 'false'
