@@ -72,17 +72,18 @@ jobs:
           NVCC_VERSION: ${{ env.nvcc-version }}
           PYTORCH_VERSION: ${{ env.pytorch-version }} 
 
-      - uses: conda-incubator/setup-miniconda@v2
-        name: "Install dependencies with Mamba"
+      - uses: mamba-org/provision-with-micromamba@main
+        name: "Install dependencies with MicroMamba"
         with:
-          activate-environment: build
           environment-file: devtools/conda-envs/build-${{ env.os }}.yml
-          miniforge-variant: Mambaforge
-          python-version: ${{ env.python-version }}
+          extra-specs: |
+            python==${{ env.python-version }}
 
       - name: "List conda packages"
         shell: bash -l {0}
-        run: conda list
+        run: |
+          micromamba list
+          micromamba info
 
       - name: "Configure"
         shell: bash -l {0}
