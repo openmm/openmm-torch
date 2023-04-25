@@ -119,7 +119,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          ctest --output-on-failure --exclude-regex TestCuda
+          ctest --output-on-failure 
 
       - name: "Run Python test"
         shell: bash -l {0}
