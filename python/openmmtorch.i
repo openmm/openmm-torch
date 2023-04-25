@@ -4,6 +4,7 @@
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 %include <std_string.i>
+%include <std_map.i>
 
 %{
 #include "TorchForce.h"
@@ -46,12 +47,16 @@
     $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
 }
 
+namespace std {
+    %template(property_map) map<string, string>;
+}
+
 namespace TorchPlugin {
 
 class TorchForce : public OpenMM::Force {
 public:
-    TorchForce(const std::string& file);
-    TorchForce(const torch::jit::Module& module);
+    TorchForce(const std::string& file, const std::map<std::string, std::string>& properties = {});
+    TorchForce(const torch::jit::Module& module, const std::map<std::string, std::string>& properties = {});
     const std::string& getFile() const;
     const torch::jit::Module& getModule() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
@@ -64,6 +69,8 @@ public:
     void setGlobalParameterName(int index, const std::string& name);
     double getGlobalParameterDefaultValue(int index) const;
     void setGlobalParameterDefaultValue(int index, double defaultValue);
+    void setProperty(const std::string& name, const std::string& value);
+    const std::map<std::string, std::string>& getProperties() const;
 
     /*
      * Add methods for casting a Force to a TorchForce.

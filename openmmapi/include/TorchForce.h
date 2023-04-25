@@ -11,7 +11,7 @@
  *                                                                            *
  * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
- * Contributors:                                                              *
+ * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
  * copy of this software and associated documentation files (the "Software"), *
@@ -34,6 +34,7 @@
 
 #include "openmm/Context.h"
 #include "openmm/Force.h"
+#include <map>
 #include <string>
 #include <torch/torch.h>
 #include "internal/windowsExportTorch.h"
@@ -54,17 +55,20 @@ public:
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule saved
      * to a file.
      *
-     * @param file   the path to the file containing the network
+     * @param file       the path to the file containing the network
+     * @param properties optional map of properties
      */
-    TorchForce(const std::string& file);
+    TorchForce(const std::string& file,
+               const std::map<std::string, std::string>& properties = {});
     /**
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule
      * Note that this constructor makes a copy of the provided module.
      * Any changes to the module  after calling this constructor will be ignored by TorchForce.
      *
      * @param module   an instance of the torch module
+     * @param properties optional map of properties
      */
-    TorchForce(const torch::jit::Module &module);
+    TorchForce(const torch::jit::Module &module, const std::map<std::string, std::string>& properties = {});
     /**
      * Get the path to the file containing the network.
      * If the TorchForce instance was constructed with a module, instead of a filename,
@@ -140,6 +144,18 @@ public:
      * @param defaultValue   the default value of the parameter
      */
     void setGlobalParameterDefaultValue(int index, double defaultValue);
+    /**
+     * Set a value of a property.
+     *
+     * @param name           the name of the property
+     * @param value          the value of the property
+     */
+    void setProperty(const std::string& name, const std::string& value);
+    /**
+     * Get the map of properties for this instance.
+     * @return A map of property names to values.
+     */
+    const std::map<std::string, std::string>& getProperties() const;
 protected:
     OpenMM::ForceImpl* createImpl() const;
 private:
@@ -148,6 +164,8 @@ private:
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
     torch::jit::Module module;
+    std::map<std::string, std::string> properties;
+    std::string emptyProperty;
 };
 
 /**

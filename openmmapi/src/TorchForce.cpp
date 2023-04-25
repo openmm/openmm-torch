@@ -8,7 +8,7 @@
  *                                                                            *
  * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
- * Contributors:                                                              *
+ * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
  * copy of this software and associated documentation files (the "Software"), *
@@ -41,10 +41,17 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-TorchForce::TorchForce(const torch::jit::Module& module) : file(), usePeriodic(false), outputsForces(false), module(module) {
+TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties) : file(), usePeriodic(false), outputsForces(false), module(module) {
+    const std::map<std::string, std::string> defaultProperties = {{"useCUDAGraphs", "false"}, {"CUDAGraphWarmupSteps", "1"}};
+    this->properties = defaultProperties;
+    for (auto& property : properties) {
+        if (defaultProperties.find(property.first) == defaultProperties.end())
+            throw OpenMMException("TorchForce: Unknown property '" + property.first + "'");
+        this->properties[property.first] = property.second;
+    }
 }
 
-TorchForce::TorchForce(const std::string& file) : TorchForce(torch::jit::load(file)) {
+TorchForce::TorchForce(const std::string& file, const map<string, string>& properties) : TorchForce(torch::jit::load(file), properties) {
     this->file = file;
 }
 
@@ -78,7 +85,7 @@ bool TorchForce::getOutputsForces() const {
 
 int TorchForce::addGlobalParameter(const string& name, double defaultValue) {
     globalParameters.push_back(GlobalParameterInfo(name, defaultValue));
-    return globalParameters.size()-1;
+    return globalParameters.size() - 1;
 }
 
 int TorchForce::getNumGlobalParameters() const {
@@ -103,4 +110,14 @@ double TorchForce::getGlobalParameterDefaultValue(int index) const {
 void TorchForce::setGlobalParameterDefaultValue(int index, double defaultValue) {
     ASSERT_VALID_INDEX(index, globalParameters);
     globalParameters[index].defaultValue = defaultValue;
+}
+
+void TorchForce::setProperty(const std::string& name, const std::string& value) {
+    if (properties.find(name) == properties.end())
+        throw OpenMMException("TorchForce: Unknown property '" + name + "'");
+    properties[name] = value;
+}
+
+const std::map<std::string, std::string>& TorchForce::getProperties() const {
+    return properties;
 }
