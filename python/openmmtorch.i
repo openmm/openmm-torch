@@ -14,6 +14,7 @@
 #include "openmm/RPMDIntegrator.h"
 #include "openmm/RPMDMonteCarloBarostat.h"
 #include <torch/csrc/jit/python/module_python.h>
+#include <torch/csrc/jit/serialization/import.h>
 %}
 
 /*
@@ -28,10 +29,14 @@
     }
 }
 
-%typemap(in) const torch::jit::Module&(torch::jit::Module module) {
-    py::object o = py::reinterpret_borrow<py::object>($input);
-    module = torch::jit::as_module(o).value();
-    $1 = &module;
+%typemap(in) const torch::jit::Module&(torch::jit::Module mod) {
+  py::object o = py::reinterpret_borrow<py::object>($input);
+  auto fileName = std::tmpnam(nullptr);
+  o.attr("save")(fileName);
+  mod = torch::jit::load(fileName);
+  $1 = &mod;
+  //This typemap assumes that torch does not require the file to exist after construction
+  std::remove(fileName);
 }
 
 %typemap(out) const torch::jit::Module& {
