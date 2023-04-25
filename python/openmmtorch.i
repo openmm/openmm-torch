@@ -44,7 +44,8 @@
 
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
+    py::handle ScriptModule = py::module::import("torch.jit").attr("ScriptModule");
+    $1 = py::isinstance(o, ScriptModule);
 }
 
 namespace std {
