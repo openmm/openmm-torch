@@ -32,17 +32,29 @@
 %typemap(in) const torch::jit::Module&(torch::jit::Module mod) {
     py::object o = py::reinterpret_borrow<py::object>($input);
     auto fileName = std::tmpnam(nullptr);
-    o.attr("save")(fileName);
-    mod = torch::jit::load(fileName);
-    $1 = &mod;
+    try{
+        o.attr("save")(fileName);
+        mod = torch::jit::load(fileName);
+        $1 = &mod;
+    }
+    catch(...){
+        std::remove(fileName);
+        throw;
+    }
     //This typemap assumes that torch does not require the file to exist after construction
     std::remove(fileName);
 }
 
 %typemap(out) const torch::jit::Module& {
     auto fileName = std::tmpnam(nullptr);
-    $1->save(fileName);
-    $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
+    try{
+        $1->save(fileName);
+        $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
+    }
+    catch(...){
+        std::remove(fileName);
+        throw;
+    }
     //This typemap assumes that torch does not require the file to exist after construction
     std::remove(fileName);
 }
