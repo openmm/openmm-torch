@@ -31,32 +31,19 @@
 
 %typemap(in) const torch::jit::Module&(torch::jit::Module mod) {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    auto fileName = std::tmpnam(nullptr);
-    try{
-        o.attr("save")(fileName);
-        mod = torch::jit::load(fileName);
-        $1 = &mod;
-    }
-    catch(...){
-        std::remove(fileName);
-        throw;
-    }
-    //This typemap assumes that torch does not require the file to exist after construction
-    std::remove(fileName);
+    py::object pybuffer = py::module::import("io").attr("BytesIO")();
+    py::module::import("torch.jit").attr("save")(o, pybuffer);
+    std::string s = py::cast<std::string>(pybuffer.attr("getvalue")());
+    std::stringstream buffer(s);
+    mod = torch::jit::load(buffer);
+    $1 = &mod;
 }
 
 %typemap(out) const torch::jit::Module& {
-    auto fileName = std::tmpnam(nullptr);
-    try{
-        $1->save(fileName);
-        $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
-    }
-    catch(...){
-        std::remove(fileName);
-        throw;
-    }
-    //This typemap assumes that torch does not require the file to exist after construction
-    std::remove(fileName);
+    std::stringstream buffer;
+    $1->save(buffer);
+    auto pybuffer = py::module::import("io").attr("BytesIO")(py::bytes(buffer.str()));
+    $result = py::module::import("torch.jit").attr("load")(pybuffer).release().ptr();
 }
 
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
