@@ -4,7 +4,6 @@
 %import(module="simtk.openmm") "swig/OpenMMSwigHeaders.i"
 %include "swig/typemaps.i"
 %include <std_string.i>
-%include <std_map.i>
 
 %{
 #include "TorchForce.h"
@@ -14,7 +13,6 @@
 #include "openmm/RPMDIntegrator.h"
 #include "openmm/RPMDMonteCarloBarostat.h"
 #include <torch/csrc/jit/python/module_python.h>
-#include <torch/csrc/jit/serialization/import.h>
 %}
 
 /*
@@ -29,39 +27,31 @@
     }
 }
 
-%typemap(in) const torch::jit::Module&(torch::jit::Module mod) {
+%typemap(in) const torch::jit::Module&(torch::jit::Module module) {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    py::object pybuffer = py::module::import("io").attr("BytesIO")();
-    py::module::import("torch.jit").attr("save")(o, pybuffer);
-    std::string s = py::cast<std::string>(pybuffer.attr("getvalue")());
-    std::stringstream buffer(s);
-    mod = torch::jit::load(buffer);
-    $1 = &mod;
+    module = torch::jit::as_module(o).value();
+    $1 = &module;
 }
 
 %typemap(out) const torch::jit::Module& {
-    std::stringstream buffer;
-    $1->save(buffer);
-    auto pybuffer = py::module::import("io").attr("BytesIO")(py::bytes(buffer.str()));
-    $result = py::module::import("torch.jit").attr("load")(pybuffer).release().ptr();
+    auto fileName = std::tmpnam(nullptr);
+    $1->save(fileName);
+    $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
+    //This typemap assumes that torch does not require the file to exist after construction
+    std::remove(fileName);
 }
 
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    py::handle ScriptModule = py::module::import("torch.jit").attr("ScriptModule");
-    $1 = py::isinstance(o, ScriptModule);
-}
-
-namespace std {
-    %template(property_map) map<string, string>;
+    $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
 }
 
 namespace TorchPlugin {
 
 class TorchForce : public OpenMM::Force {
 public:
-    TorchForce(const std::string& file, const std::map<std::string, std::string>& properties = {});
-    TorchForce(const torch::jit::Module& module, const std::map<std::string, std::string>& properties = {});
+    TorchForce(const std::string& file);
+    TorchForce(const torch::jit::Module& module);
     const std::string& getFile() const;
     const torch::jit::Module& getModule() const;
     void setUsesPeriodicBoundaryConditions(bool periodic);
@@ -74,8 +64,6 @@ public:
     void setGlobalParameterName(int index, const std::string& name);
     double getGlobalParameterDefaultValue(int index) const;
     void setGlobalParameterDefaultValue(int index, double defaultValue);
-    void setProperty(const std::string& name, const std::string& value);
-    const std::map<std::string, std::string>& getProperties() const;
 
     /*
      * Add methods for casting a Force to a TorchForce.

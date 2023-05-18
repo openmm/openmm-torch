@@ -252,44 +252,6 @@ to return forces.
 torch_force.setOutputsForces(True)
 ```
 
-Recording the model into a CUDA graph
--------------------------------------
-
-You can ask `TorchForce` to run the model using [CUDA graphs](https://pytorch.org/docs/stable/notes/cuda.html#cuda-graphs). Not every model will be compatible with this feature, but it can be a significant performance boost for some models. To enable it the CUDA platform must be used and an special property must be provided to `TorchForce`:
-
-```python
-torch_force.setProperty("useCUDAGraphs", "true")
-# The property can also be set at construction
-torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
-```
-
-The first time the model is run, it will be compiled (also known as recording) into a CUDA graph. Subsequent runs will use the compiled graph, which can be significantly faster. It is possible that compilation fails, in which case an `OpenMMException` will be raised. If that happens, you can disable CUDA graphs and try again.
-
-It is required to run the model at least once before recording, in what is known as warmup.
-By default ```TorchForce``` will run the model just once before recording, but longer warming up might be desired. In these cases one can set the property ```CUDAGraphWarmupSteps```:
-```python
-torch_force.setProperty("CUDAGraphWarmupSteps", "12")
-```
-
-List of available properties
-----------------------------
-
-Some ```TorchForce``` functionalities can be customized by setting properties on an instance of it. Properties can be set at construction or by using ```setProperty```. A property is a pair of key/value strings. For instance:
-
-```python
-torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
-#Alternatively setProperty can be used to configure an already created instance.
-#torch_force.setProperty("useCUDAGraphs", "true")
-print("Current properties:")
-for property in torch_force.getProperties():
-    print(property.key, property.value)
-```
-
-Currently, the following properties are available:
-
-1. useCUDAGraphs: Turns on the CUDA graph functionality
-2. CUDAGraphWarmupSteps: When CUDA graphs are being used, controls the number of warmup calls to the model before recording.
-
 License
 =======
 

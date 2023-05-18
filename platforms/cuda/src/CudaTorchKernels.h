@@ -11,7 +11,7 @@
  *                                                                            *
  * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
- * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
+ * Contributors:                                                              *
  *                                                                            *
  * Permission is hereby granted, free of charge, to any person obtaining a    *
  * copy of this software and associated documentation files (the "Software"), *
@@ -34,9 +34,6 @@
 
 #include "TorchKernels.h"
 #include "openmm/cuda/CudaContext.h"
-#include "openmm/cuda/CudaArray.h"
-#include <torch/version.h>
-#include <ATen/cuda/CUDAGraph.h>
 
 namespace TorchPlugin {
 
@@ -49,7 +46,7 @@ public:
     ~CudaCalcTorchForceKernel();
     /**
      * Initialize the kernel.
-     *
+     * 
      * @param system         the System this kernel will be applied to
      * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
@@ -64,22 +61,15 @@ public:
      * @return the potential energy due to the force
      */
     double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
-
 private:
     bool hasInitializedKernel;
     OpenMM::CudaContext& cu;
     torch::jit::script::Module module;
     torch::Tensor posTensor, boxTensor;
-    torch::Tensor energyTensor, forceTensor;
     std::vector<std::string> globalNames;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;
-    std::map<bool, at::cuda::CUDAGraph> graphs;
-    std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
-    bool useGraphs;
-    void addForces(torch::Tensor& forceTensor);
-    int warmupSteps;
 };
 
 } // namespace TorchPlugin
