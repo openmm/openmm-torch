@@ -113,20 +113,20 @@ jobs:
       - name: "List plugins"
         shell: bash -l {0}
         run: |
-          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python3.10/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           python -c "import openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
 
       - name: "Run C++ test"
         shell: bash -l {0}
         run: |
-          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python3.10/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
           ctest --output-on-failure 
 
       - name: "Run Python test"
         shell: bash -l {0}
         run: |
-          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python3.10/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
           pytest --verbose Test*
 
