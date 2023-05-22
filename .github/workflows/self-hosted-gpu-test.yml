@@ -53,7 +53,7 @@ jobs:
       gcc-version: "10.3.*"
       nvcc-version: "11.7.*"
       python-version: "3.10.*"
-      pytorch-version: "1.12.*"
+      pytorch-version: "2.0.*"
 
 
     defaults:
