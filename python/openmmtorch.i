@@ -14,6 +14,7 @@
 #include "openmm/RPMDIntegrator.h"
 #include "openmm/RPMDMonteCarloBarostat.h"
 #include <torch/csrc/jit/python/module_python.h>
+#include <torch/csrc/jit/serialization/import.h>
 %}
 
 /*
@@ -28,23 +29,27 @@
     }
 }
 
-%typemap(in) const torch::jit::Module&(torch::jit::Module module) {
+%typemap(in) const torch::jit::Module&(torch::jit::Module mod) {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    module = torch::jit::as_module(o).value();
-    $1 = &module;
+    py::object pybuffer = py::module::import("io").attr("BytesIO")();
+    py::module::import("torch.jit").attr("save")(o, pybuffer);
+    std::string s = py::cast<std::string>(pybuffer.attr("getvalue")());
+    std::stringstream buffer(s);
+    mod = torch::jit::load(buffer);
+    $1 = &mod;
 }
 
 %typemap(out) const torch::jit::Module& {
-    auto fileName = std::tmpnam(nullptr);
-    $1->save(fileName);
-    $result = py::module::import("torch.jit").attr("load")(fileName).release().ptr();
-    //This typemap assumes that torch does not require the file to exist after construction
-    std::remove(fileName);
+    std::stringstream buffer;
+    $1->save(buffer);
+    auto pybuffer = py::module::import("io").attr("BytesIO")(py::bytes(buffer.str()));
+    $result = py::module::import("torch.jit").attr("load")(pybuffer).release().ptr();
 }
 
 %typecheck(SWIG_TYPECHECK_POINTER) const torch::jit::Module& {
     py::object o = py::reinterpret_borrow<py::object>($input);
-    $1 = torch::jit::as_module(o).has_value() ? 1 : 0;
+    py::handle ScriptModule = py::module::import("torch.jit").attr("ScriptModule");
+    $1 = py::isinstance(o, ScriptModule);
 }
 
 namespace std {
