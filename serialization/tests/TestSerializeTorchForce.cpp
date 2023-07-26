@@ -76,14 +76,14 @@ void serializeAndDeserialize(TorchForce force) {
 }
 
 void testSerializationFromModule() {
-    string fileName = "../../tests/forces.pt";
+    string fileName = "tests/forces.pt";
     torch::jit::Module module = torch::jit::load(fileName);
     TorchForce force(module);
     serializeAndDeserialize(force);
 }
 
 void testSerializationFromFile() {
-    string fileName = "../../tests/forces.pt";
+    string fileName = "tests/forces.pt";
     TorchForce force(fileName);
     serializeAndDeserialize(force);
 }
