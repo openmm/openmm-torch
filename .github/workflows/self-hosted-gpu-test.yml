@@ -3,7 +3,6 @@ on:
   push:
     branches:
       - master
-      - feat/add_aws_gpu_runner 
   workflow_dispatch:
   schedule:
     # weekly tests
