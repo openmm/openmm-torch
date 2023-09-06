@@ -1,0 +1,152 @@
+name: self-hosted-gpu-test
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+  schedule:
+    # weekly tests
+    - cron: "0 0 * * SUN"
+jobs:
+  start-runner:
+    name: Start self-hosted EC2 runner
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+      ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Try to start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@main
+        with:
+          mode: start
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          ec2-image-id: ami-04d16a12bbc76ff0b
+          ec2-instance-type: g4dn.xlarge
+          subnet-id: subnet-0dee8543e12afe0cd # us-east-1a
+          security-group-id: sg-0f9809618550edb98
+          # iam-role-name: self-hosted-runner # optional, requires additional permissions
+          aws-resource-tags: > # optional, requires additional permissions
+            [
+              {"Key": "Name", "Value": "ec2-github-runner"},
+              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+            ]
+
+  do-the-job:
+    name: Do the job on the runner
+    needs: start-runner # required to start the main job when the runner is ready
+    runs-on: ${{ needs.start-runner.outputs.label }} # run the job on the newly created runner
+    timeout-minutes: 120 # 2 hrs
+    env:
+      HOME: /home/ec2-user
+      os: ubuntu-22.04
+      cuda-version: "11.7"
+      gcc-version: "10.3.*"
+      nvcc-version: "11.7"
+      python-version: "3.10"
+      pytorch-version: "1.12.*"
+
+
+    defaults:
+      run:
+        shell: bash -l {0}
+    steps:
+
+      - uses: actions/checkout@v3
+      - name: "Update the conda enviroment file"
+        uses: cschleiden/replace-tokens@v1
+        with:
+          tokenPrefix: '@'
+          tokenSuffix: '@'
+          files: devtools/conda-envs/build-${{ env.os }}.yml
+        env:
+          CUDATOOLKIT_VERSION: ${{ env.cuda-version }}
+          GCC_VERSION: ${{ env.gcc-version }}
+          NVCC_VERSION: ${{ env.nvcc-version }}
+          PYTORCH_VERSION: ${{ env.pytorch-version }} 
+
+      - uses: mamba-org/provision-with-micromamba@main
+        name: "Install dependencies with MicroMamba"
+        with:
+          environment-file: devtools/conda-envs/build-${{ env.os }}.yml
+          extra-specs: |
+            python==${{ env.python-version }}
+            pytest-xdist
+
+      - name: "List conda packages"
+        shell: bash -l {0}
+        run: |
+          micromamba list
+          micromamba info
+
+      - name: "Configure"
+        shell: bash -l {0}
+        run: |
+          mkdir build
+          cd build
+
+          SHLIB_EXT=".so"
+
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
+            -DOPENMM_DIR=${CONDA_PREFIX} \
+            -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/share/cmake/Torch \
+            -DNN_BUILD_OPENCL_LIB=ON \
+            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT}
+
+      - name: "Build"
+        shell: bash -l {0}
+        run: |
+          cd build
+          make -j2 install
+          make -j2 PythonInstall
+
+      - name: "List plugins"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          python -c "import openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
+
+      - name: "Run C++ test"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          cd build
+          ctest --output-on-failure 
+
+      - name: "Run Python test"
+        shell: bash -l {0}
+        run: |
+          export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ env.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
+          cd python/tests
+          pytest -n auto --verbose Test*
+
+  stop-runner:
+    name: Stop self-hosted EC2 runner
+    needs:
+      - start-runner # required to get output from the start-runner job
+      - do-the-job # required to wait when the main job is done
+    runs-on: ubuntu-latest
+    if: ${{ always() }} # required to stop the runner even if the error happened in the previous jobs
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Stop EC2 runner
+        uses: machulav/ec2-github-runner@main
+        with:
+          mode: stop
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label }}
+          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id }}
