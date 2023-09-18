@@ -188,8 +188,10 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
         energyTensor = module.forward(inputs).toTensor();
         // Compute force by backpropagating the PyTorch model
         if (includeForces) {
-	    auto None = torch::Tensor();
-	    energyTensor.backward(None, false, false, posTensor);
+            // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
+	    // See https://github.com/openmm/openmm-torch/pull/120/
+	    auto none = torch::Tensor();
+	    energyTensor.backward(none, false, false, posTensor);
 	    // This is minus the forces, we change the sign later on
             forceTensor = posTensor.grad().clone();
             // Zero the gradient to avoid accumulating it
