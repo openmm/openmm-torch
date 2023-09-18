@@ -188,7 +188,9 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
         energyTensor = module.forward(inputs).toTensor();
         // Compute force by backpropagating the PyTorch model
         if (includeForces) {
-            energyTensor.backward();
+	    auto None = torch::Tensor();
+	    energyTensor.backward(None, false, false, posTensor);
+	    // This is minus the forces, we change the sign later on
             forceTensor = posTensor.grad().clone();
             // Zero the gradient to avoid accumulating it
             posTensor.grad().zero_();
