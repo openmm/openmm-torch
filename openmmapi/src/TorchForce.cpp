@@ -42,7 +42,7 @@ using namespace OpenMM;
 using namespace std;
 
 TorchForce::TorchForce(const torch::jit::Module& module, const map<string, string>& properties) : file(), usePeriodic(false), outputsForces(false), module(module) {
-    const std::map<std::string, std::string> defaultProperties = {{"useCUDAGraphs", "false"}, {"CUDAGraphWarmupSteps", "1"}};
+    const std::map<std::string, std::string> defaultProperties = {{"useCUDAGraphs", "false"}, {"CUDAGraphWarmupSteps", "10"}};
     this->properties = defaultProperties;
     for (auto& property : properties) {
         if (defaultProperties.find(property.first) == defaultProperties.end())
