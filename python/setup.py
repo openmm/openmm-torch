@@ -1,7 +1,5 @@
-from distutils.core import setup
-from distutils.extension import Extension
+from setuptools import setup, Extension
 import os
-import sys
 import platform
 
 openmm_dir = '@OPENMM_DIR@'
