@@ -2,7 +2,7 @@
 # OpenMM PyTorch Plugin
 #----------------------------------------------------
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.7)
 
 # We need to know where OpenMM is installed so we can access the headers and libraries.
 SET(OPENMM_DIR "/usr/local/openmm" CACHE PATH "Where OpenMM is installed")
@@ -14,8 +14,15 @@ SET(PYTORCH_DIR "" CACHE PATH "Where the PyTorch C++ API is installed")
 SET(CMAKE_PREFIX_PATH "${PYTORCH_DIR}")
 FIND_PACKAGE(Torch REQUIRED)
 
-# Specify the C++ version we are building for.
-SET (CMAKE_CXX_STANDARD 14)
+# Specify the C++ version we are building for. Latest pytorch versions require C++17
+message(STATUS "Found Torch: ${Torch_VERSION}")
+if(${Torch_VERSION} VERSION_GREATER_EQUAL "2.1.0")
+    set(CMAKE_CXX_STANDARD 17)
+    message(STATUS "Setting C++ standard to C++17")
+else()
+    set(CMAKE_CXX_STANDARD 14)
+    message(STATUS "Setting C++ standard to C++14")
+endif()
 
 # Set flags for linking on mac
 IF(APPLE)
