@@ -100,6 +100,29 @@ jobs:
           sudo apt-get autoclean -y >& /dev/null
           sudo docker image prune --all --force
           df -h
+      
+      - name: "Install CUDA Toolkit on Linux (if needed)"
+        uses: Jimver/cuda-toolkit@v0.2.10
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          linux-local-args: '["--toolkit", "--override"]'
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - name: "Install SDK on MacOS (if needed)"
+        run: source devtools/scripts/install_macos_sdk.sh
+        if: startsWith(matrix.os, 'macos')
+
+      - name: "Update the conda enviroment file"
+        uses: cschleiden/replace-tokens@v1
+        with:
+          tokenPrefix: '@'
+          tokenSuffix: '@'
+          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+        env:
+          CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
+          GCC_VERSION: ${{ matrix.gcc-version }}
+          NVCC_VERSION: ${{ matrix.nvcc-version }}
+          PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with Mamba"
