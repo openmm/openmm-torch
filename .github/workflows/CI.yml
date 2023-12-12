@@ -77,6 +77,30 @@ jobs:
           NVCC_VERSION: ${{ matrix.nvcc-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
+      - name: Manage disk space
+        if: matrix.os == 'ubuntu'
+        run: |
+          sudo mkdir -p /opt/empty_dir || true
+          for d in \
+                   /opt/ghc \
+                   /opt/hostedtoolcache \
+                   /usr/lib/jvm \
+                   /usr/local/.ghcup \
+                   /usr/local/lib/android \
+                   /usr/local/share/powershell \
+                   /usr/share/dotnet \
+                   /usr/share/swift \
+                   ; do
+            sudo rsync --stats -a --delete /opt/empty_dir/ $d || true
+          done
+          sudo apt-get purge -y -f firefox \
+                                   google-chrome-stable \
+                                   microsoft-edge-stable
+          sudo apt-get autoremove -y >& /dev/null
+          sudo apt-get autoclean -y >& /dev/null
+          sudo docker image prune --all --force
+          df -h
+
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with Mamba"
         with:
