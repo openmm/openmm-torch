@@ -6,10 +6,11 @@ openmm_dir = '@OPENMM_DIR@'
 torch_include_dirs = '@TORCH_INCLUDE_DIRS@'.split(';')
 nn_plugin_header_dir = '@NN_PLUGIN_HEADER_DIR@'
 nn_plugin_library_dir = '@NN_PLUGIN_LIBRARY_DIR@'
+cpp_std = '@EXTENSION_CXX_STANDARD@'
 torch_dir, _ = os.path.split('@TORCH_LIBRARY@')
 
 # setup extra compile and link arguments on Mac
-extra_compile_args = ['-std=c++14']
+extra_compile_args = ['-std=c++' + cpp_std]
 extra_link_args = []
 
 if platform.system() == 'Darwin':
