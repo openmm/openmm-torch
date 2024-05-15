@@ -48,7 +48,7 @@ public:
     ~ReferenceCalcTorchForceKernel();
     /**
      * Initialize the kernel.
-     * 
+     *
      * @param system         the System this kernel will be applied to
      * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
@@ -67,6 +67,7 @@ private:
     torch::jit::script::Module module;
     std::vector<float> positions, boxVectors;
     std::vector<std::string> globalNames;
+    std::vector<std::string> energyParameterDerivatives;
     bool usePeriodic, outputsForces;
 };
 

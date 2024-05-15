@@ -54,6 +54,11 @@ static Vec3* extractBoxVectors(ContextImpl& context) {
     return data->periodicBoxVectors;
 }
 
+static map<string, double>& extractEnergyParameterDerivatives(ContextImpl& context) {
+    ReferencePlatform::PlatformData* data = reinterpret_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
+    return *data->energyParameterDerivatives;
+}
+
 ReferenceCalcTorchForceKernel::~ReferenceCalcTorchForceKernel() {
 }
 
@@ -63,6 +68,8 @@ void ReferenceCalcTorchForceKernel::initialize(const System& system, const Torch
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        energyParameterDerivatives.push_back(force.getEnergyParameterDerivativeName(i));
 }
 
 double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
@@ -76,15 +83,21 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
         inputs.push_back(boxTensor);
     }
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    // Store parameter tensors that need derivatives
+    vector<torch::Tensor> parameterTensors;
+    for (const string& name : globalNames) {
+        // Require grad if the parameter is in the list of energy parameter derivatives
+        bool requires_grad = std::find(energyParameterDerivatives.begin(), energyParameterDerivatives.end(), name) != energyParameterDerivatives.end();
+	auto tensor = torch::tensor(context.getParameter(name), torch::TensorOptions().requires_grad(requires_grad));
+	parameterTensors.emplace_back(tensor);
+        inputs.push_back(tensor);
+    }
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
         energyTensor = outputs->elements()[0].toTensor();
         forceTensor = outputs->elements()[1].toTensor();
-    }
-    else
+    } else
         energyTensor = module.forward(inputs).toTensor();
     if (includeForces) {
         if (!outputsForces) {
@@ -97,7 +110,16 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         double forceSign = (outputsForces ? 1.0 : -1.0);
         for (int i = 0; i < numParticles; i++)
             for (int j = 0; j < 3; j++)
-                force[i][j] += forceSign*outputForces[3*i+j];
+                force[i][j] += forceSign * outputForces[3 * i + j];
+    }
+    // Store parameter energy derivatives
+    auto& derivs = extractEnergyParameterDerivatives(context);
+    for (int i = 0; i < energyParameterDerivatives.size(); i++) {
+        // Compute the derivative of the energy with respect to this parameter.
+        // The derivative is stored in the gradient of the parameter tensor.
+        double derivative = parameterTensors[i].grad().item<double>();
+	auto name = energyParameterDerivatives[i];
+        derivs[name] = derivative;
     }
     return energyTensor.item<double>();
 }
