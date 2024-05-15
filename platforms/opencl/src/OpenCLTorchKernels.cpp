@@ -38,10 +38,6 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-static map<string, double>& extractEnergyParameterDerivatives(OpenCLContext& cl) {
-  return cl.getEnergyParamDerivWorkspace();
-}
-
 OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
 }
 
@@ -96,8 +92,6 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
         // parameterTensors.emplace_back(tensor);
         inputs.push_back(tensor);
     }
-    // for (const string& name : globalNames)
-    //     inputs.push_back(torch::tensor(context.getParameter(name)));
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -131,7 +125,7 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
         cl.executeKernel(addForcesKernel, numParticles);
     }
     // Store parameter energy derivatives
-    auto& derivs = extractEnergyParameterDerivatives(cl);
+    auto& derivs = cl.getEnergyParamDerivWorkspace();
     int firstParameterIndex = usePeriodic ? 2 : 1; // Skip the position and box tensors
     for (int i = 0; i < energyParameterDerivatives.size(); i++) {
         // Compute the derivative of the energy with respect to this parameter.
