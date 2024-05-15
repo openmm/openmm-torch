@@ -204,7 +204,15 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
             // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
 	    // See https://github.com/openmm/openmm-torch/pull/120/
 	    auto none = torch::Tensor();
-	    energyTensor.backward(none, false, false, posTensor);
+	    std::vector<torch::Tensor> inputs_with_grad;
+	    for (auto& input : inputs) {
+	      if (input.isTensor()) {
+		auto tensor = input.toTensor();
+		if (tensor.requires_grad())
+		  inputs_with_grad.push_back(tensor);
+	      }
+	    }
+	    energyTensor.backward(none, false, false, inputs_with_grad);
 	    // This is minus the forces, we change the sign later on
             forceTensor = posTensor.grad().clone();
             // Zero the gradient to avoid accumulating it
