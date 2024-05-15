@@ -40,7 +40,7 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     parameter = 1.0
     force.addGlobalParameter("parameter", parameter)
     # Enable energy derivatives for the parameter
-    force.addEnergyParameterDerivatives("parameter")
+    force.addEnergyParameterDerivative("parameter")
     force.setOutputsForces(True)
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
