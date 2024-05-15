@@ -51,6 +51,9 @@ void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchFor
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        energyParameterDerivatives.push_back(force.getEnergyParameterDerivativeName(i));
+
     int numParticles = system.getNumParticles();
 
     // Inititalize OpenCL objects.
