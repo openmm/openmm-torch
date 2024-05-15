@@ -23,13 +23,14 @@ class EnergyWithParameters(pt.nn.Module):
 
 class EnergyForceWithParameters(pt.nn.Module):
 
-    def __init__(self, use_backwards=False):
+    def __init__(self, use_backwards=True):
         super(EnergyForceWithParameters, self).__init__()
         self.use_backwards = use_backwards
 
     def forward(
         self, positions: Tensor, parameter1: Tensor, parameter2: Tensor
     ) -> Tuple[Tensor, Tensor]:
+        positions.requires_grad_(True)
         x2 = positions.pow(2).sum(dim=1)
         u_harmonic = ((parameter1 + parameter2**2) * x2).sum()
         # This way of computing the forces forcefully leaves out the parameter derivatives
@@ -40,7 +41,7 @@ class EnergyForceWithParameters(pt.nn.Module):
                 [positions],
                 grad_outputs=grad_outputs,
                 create_graph=False,
-                retain_graph=False,
+                retain_graph=True,
             )[0]
             assert dy is not None
             forces = -dy
@@ -51,8 +52,12 @@ class EnergyForceWithParameters(pt.nn.Module):
 
 @pytest.mark.parametrize("use_cv_force", [False, True])
 @pytest.mark.parametrize("platform", ["Reference", "CPU", "CUDA", "OpenCL"])
-@pytest.mark.parametrize("return_forces", [False, True])
-def testParameterEnergyDerivatives(use_cv_force, platform, return_forces):
+@pytest.mark.parametrize(
+    ("return_forces", "use_backwards"), [(False, False), (True, False), (True, True)]
+)
+def testParameterEnergyDerivatives(
+    use_cv_force, platform, return_forces, use_backwards
+):
 
     if pt.cuda.device_count() < 1 and platform == "CUDA":
         pytest.skip("A CUDA device is not available")
@@ -66,7 +71,7 @@ def testParameterEnergyDerivatives(use_cv_force, platform, return_forces):
 
     # Create a force
     if return_forces:
-        pt_force = EnergyForceWithParameters()
+        pt_force = EnergyForceWithParameters(use_backwards=use_backwards)
     else:
         pt_force = EnergyWithParameters()
     model = pt.jit.script(pt_force)
