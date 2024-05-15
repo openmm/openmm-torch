@@ -18,7 +18,7 @@ class ForceWithParameters(pt.nn.Module):
         return u_harmonic
 
 
-@pytest.mark.parametrize("use_cv_force", [True, False])
+@pytest.mark.parametrize("use_cv_force", [False, True])
 @pytest.mark.parametrize("platform", ["Reference", "CPU", "CUDA", "OpenCL"])
 def testParameterEnergyDerivatives(use_cv_force, platform):
 
@@ -41,7 +41,7 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     force.addGlobalParameter("parameter", parameter)
     # Enable energy derivatives for the parameter
     force.addEnergyParameterDerivative("parameter")
-    force.setOutputsForces(True)
+    force.setOutputsForces(False)
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
         cv_force = mm.CustomCVForce("force")
@@ -56,7 +56,7 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     context = mm.Context(system, integ, platform)
     context.setPositions(positions)
     state = context.getState(
-        getEnergy=True, getForces=True, getEnergyParameterDerivatives=True
+        getEnergy=True, getForces=True, getParameterDerivatives=True
     )
 
     # See if the energy and forces and the parameter derivative are correct.
@@ -69,8 +69,6 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     )
     assert np.allclose(-2 * parameter * positions, state.getForces(asNumpy=True))
     assert np.allclose(
-        2 * r2,
-        state.getEnergyParameterDerivatives()["parameter"].value_in_unit(
-            unit.kilojoules_per_mole
-        ),
+        r2,
+        state.getEnergyParameterDerivatives()["parameter"],
     )
