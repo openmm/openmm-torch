@@ -23,7 +23,6 @@ jobs:
       matrix:
         include:
           # Oldest supported versions
-          # NOTE: renable CUDA 10.2 when it supported by NNPOps (https://github.com/conda-forge/nnpops-feedstock/pull/8)
           - name: Linux (CUDA 11.0, Python 3.7, PyTorch 1.11)
             os: ubuntu-22.04
             cuda-version: "11.0.3"
@@ -31,16 +30,18 @@ jobs:
             nvcc-version: "11.0"
             python-version: "3.7"
             pytorch-version: "1.11.*"
+            envfile: build-ubuntu-22.04
 
           # Latest supported versions
-          - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.0)
+          - name: Linux (CUDA 12.4, Python 3.12, PyTorch 2.3)
             os: ubuntu-22.04
-            cuda-version: "11.8.0"
-            gcc-version: "10.3.*"
-            nvcc-version: "11.8"
-            python-version: "3.10"
-            pytorch-version: "2.0.*"
-
+            cuda-version: "12.4"
+            gcc-version: "12.3.*"
+            nvcc-version: ""
+            python-version: "3.12"
+            pytorch-version: "2.3.*"
+            envfile: build-cuda12
+            
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
             cuda-version: ""
@@ -48,7 +49,7 @@ jobs:
             nvcc-version: ""
             python-version: "3.9"
             pytorch-version: "1.9.*" # Some test fails with 1.10
-
+            envfile: build-macos-11
 
     steps:
       - name: "Check out"
@@ -59,7 +60,7 @@ jobs:
         with:
           cuda: ${{ matrix.cuda-version }}
           linux-local-args: '["--toolkit", "--override"]'
-        if: startsWith(matrix.os, 'ubuntu')
+        if: startsWith(matrix.cuda-version, "11")
 
       - name: "Install SDK on MacOS (if needed)"
         run: source devtools/scripts/install_macos_sdk.sh
@@ -101,39 +102,16 @@ jobs:
           sudo docker image prune --all --force
           df -h
       
-      - name: "Install CUDA Toolkit on Linux (if needed)"
-        uses: Jimver/cuda-toolkit@v0.2.10
-        with:
-          cuda: ${{ matrix.cuda-version }}
-          linux-local-args: '["--toolkit", "--override"]'
-        if: startsWith(matrix.os, 'ubuntu')
-
-      - name: "Install SDK on MacOS (if needed)"
-        run: source devtools/scripts/install_macos_sdk.sh
-        if: startsWith(matrix.os, 'macos')
-
-      - name: "Update the conda enviroment file"
-        uses: cschleiden/replace-tokens@v1
-        with:
-          tokenPrefix: '@'
-          tokenSuffix: '@'
-          files: devtools/conda-envs/build-${{ matrix.os }}.yml
-        env:
-          CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
-          GCC_VERSION: ${{ matrix.gcc-version }}
-          NVCC_VERSION: ${{ matrix.nvcc-version }}
-          PYTORCH_VERSION: ${{ matrix.pytorch-version }}
-
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
-          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          environment-file: devtools/conda-envs/${{ matrix.envfile }}.yml
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
         env:
           # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
-          CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
+          CONDA_OVERRIDE_CUDA: ${{ matrix.cuda-version }}
 
       - name: "List conda packages"
         shell: bash -l {0}

@@ -1,0 +1,25 @@
+name: build
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - cuda-version @CUDATOOLKIT_VERSION@
+  - cuda-libraries-dev
+  - cuda-nvcc
+  - cuda-driver-dev
+  - gxx @GCC_VERSION@
+  - make
+  - nnpops
+  - ocl-icd
+  - openmm >=7.7
+  - pip
+  - pocl
+  - pytest
+  - python
+  - pytorch @PYTORCH_VERSION@
+  - swig
+  - sysroot_linux-64 2.17
+  - torchani
+  # Required by python<3.8
+  # xref: https://github.com/conda-forge/linux-sysroot-feedstock/issues/52
+  - libxcrypt
