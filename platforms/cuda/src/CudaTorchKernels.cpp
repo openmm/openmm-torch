@@ -70,8 +70,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
-    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
-        energyParameterDerivatives.push_back(force.getEnergyParameterDerivativeName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++){
+        auto name = force.getEnergyParameterDerivativeName(i);
+        energyParameterDerivatives.push_back(name);
+	cu.addEnergyParameterDerivative(name);
     int numParticles = system.getNumParticles();
 
     // Push the PyTorch context
