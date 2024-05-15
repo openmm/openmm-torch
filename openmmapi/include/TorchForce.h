@@ -129,6 +129,13 @@ public:
      */
     const std::string& getEnergyParameterDerivativeName(int index) const;
     /**
+     * Get the number of global parameters with respect to which the derivative of the energy
+     * should be computed.
+     */
+    int getNumEnergyParameterDerivatives() const {
+        return energyParameterDerivatives.size();
+    }
+    /**
      * Get the name of a global parameter.
      *
      * @param index     the index of the parameter for which to get the name
