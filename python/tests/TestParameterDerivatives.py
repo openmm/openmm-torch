@@ -12,9 +12,11 @@ class ForceWithParameters(pt.nn.Module):
     def __init__(self):
         super(ForceWithParameters, self).__init__()
 
-    def forward(self, positions: Tensor, parameter: Tensor) -> Tensor:
+    def forward(
+        self, positions: Tensor, parameter1: Tensor, parameter2: Tensor
+    ) -> Tensor:
         x2 = positions.pow(2).sum(dim=1)
-        u_harmonic = (parameter * x2).sum()
+        u_harmonic = ((parameter1 + parameter2**2) * x2).sum()
         return u_harmonic
 
 
@@ -35,21 +37,23 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     # Create a force
     pt_force = ForceWithParameters()
     model = pt.jit.script(pt_force)
-    force = ot.TorchForce(model, {"useCUDAGraphs": "false"})
+    tforce = ot.TorchForce(model, {"useCUDAGraphs": "false"})
     # Add a parameter
-    parameter = 1.0
-    force.addGlobalParameter("parameter", parameter)
-    # Enable energy derivatives for the parameter
-    force.addEnergyParameterDerivative("parameter")
-    force.setOutputsForces(False)
+    parameter1 = 1.0
+    parameter2 = 1.0
+    tforce.setOutputsForces(False)
+    tforce.addGlobalParameter("parameter1", parameter1)
+    tforce.addEnergyParameterDerivative("parameter1")
+    tforce.addGlobalParameter("parameter2", parameter2)
+    tforce.addEnergyParameterDerivative("parameter2")
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
-        cv_force = mm.CustomCVForce("force")
-        cv_force.addCollectiveVariable("force", force)
-        system.addForce(cv_force)
+        force = mm.CustomCVForce("force")
+        force.addCollectiveVariable("force", tforce)
     else:
-        system.addForce(force)
-
+        force = tforce
+    # Enable energy derivatives for the parameter
+    system.addForce(force)
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
     platform = mm.Platform.getPlatformByName(platform)
@@ -60,15 +64,21 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
     )
 
     # See if the energy and forces and the parameter derivative are correct.
-    # The network defines a potential of the form E(r) = parameter*|r|^2
+    # The network defines a potential of the form E(r) = (parameter1 + parameter2**2)*|r|^2
     r2 = np.sum(positions * positions)
-    expectedEnergy = parameter * r2
+    expectedEnergy = (parameter1 + parameter2**2) * r2
     assert np.allclose(
         expectedEnergy,
         state.getPotentialEnergy().value_in_unit(unit.kilojoules_per_mole),
     )
-    assert np.allclose(-2 * parameter * positions, state.getForces(asNumpy=True))
+    assert np.allclose(
+        -2 * (parameter1 + parameter2**2) * positions, state.getForces(asNumpy=True)
+    )
     assert np.allclose(
         r2,
-        state.getEnergyParameterDerivatives()["parameter"],
+        state.getEnergyParameterDerivatives()["parameter1"],
+    )
+    assert np.allclose(
+        2 * parameter2 * r2,
+        state.getEnergyParameterDerivatives()["parameter2"],
     )
