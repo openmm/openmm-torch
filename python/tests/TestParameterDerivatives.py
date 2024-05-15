@@ -41,6 +41,7 @@ class EnergyForceWithParameters(pt.nn.Module):
                 [positions],
                 grad_outputs=grad_outputs,
                 create_graph=False,
+                # This must be true, otherwise pytorch will not allow to compute the gradients with respect to the parameters
                 retain_graph=True,
             )[0]
             assert dy is not None
