@@ -52,9 +52,7 @@ using namespace std;
     }
 
 static map<string, double>& extractEnergyParameterDerivatives(CudaContext& context) {
-  //CudaPlatform::PlatformData* data = reinterpret_cast<CudaPlatform::PlatformData*>(context.getPlatformData());
-  //return *data->energyParameterDerivatives;
-  context.getEnergyParamDerivWorkspace();
+    return context.getEnergyParamDerivWorkspace();
 }
 
 CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) : CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
