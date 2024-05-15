@@ -82,8 +82,9 @@ def testParameterEnergyDerivatives(
     parameter2 = 1.0
     tforce.setOutputsForces(return_forces)
     tforce.addGlobalParameter("parameter1", parameter1)
-    tforce.addEnergyParameterDerivative("parameter1")
     tforce.addGlobalParameter("parameter2", parameter2)
+    # Enable energy derivatives for the parameters
+    tforce.addEnergyParameterDerivative("parameter1")
     tforce.addEnergyParameterDerivative("parameter2")
     if use_cv_force:
         # Wrap TorchForce into CustomCVForce
@@ -91,7 +92,6 @@ def testParameterEnergyDerivatives(
         force.addCollectiveVariable("force", tforce)
     else:
         force = tforce
-    # Enable energy derivatives for the parameter
     system.addForce(force)
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
