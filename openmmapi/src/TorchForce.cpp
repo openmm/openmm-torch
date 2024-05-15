@@ -88,6 +88,21 @@ int TorchForce::addGlobalParameter(const string& name, double defaultValue) {
     return globalParameters.size() - 1;
 }
 
+void TorchForce::addEnergyParameterDerivative(const string& name) {
+    for (int i = 0; i < globalParameters.size(); i++) {
+        if (globalParameters[i].name == name) {
+            energyParameterDerivatives.push_back(i);
+            return;
+        }
+    }
+}
+
+const std::string& TorchForce::getEnergyParameterDerivativeName(int index) const {
+    if (index < 0 || index >= energyParameterDerivatives.size())
+        throw OpenMM::OpenMMException("TorchForce::getEnergyParameterDerivativeName: index out of range.");
+    return globalParameters[energyParameterDerivatives[index]].name;
+}
+
 int TorchForce::getNumGlobalParameters() const {
     return globalParameters.size();
 }

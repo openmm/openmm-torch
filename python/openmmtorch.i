@@ -74,6 +74,8 @@ public:
     void setGlobalParameterName(int index, const std::string& name);
     double getGlobalParameterDefaultValue(int index) const;
     void setGlobalParameterDefaultValue(int index, double defaultValue);
+    void addEnergyParameterDerivative(const std::string& name);
+    const std::string& getEnergyParameterDerivativeName(int index) const;
     void setProperty(const std::string& name, const std::string& value);
     const std::map<std::string, std::string>& getProperties() const;
 

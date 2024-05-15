@@ -58,8 +58,7 @@ public:
      * @param file       the path to the file containing the network
      * @param properties optional map of properties
      */
-    TorchForce(const std::string& file,
-               const std::map<std::string, std::string>& properties = {});
+    TorchForce(const std::string& file, const std::map<std::string, std::string>& properties = {});
     /**
      * Create a TorchForce.  The network is defined by a PyTorch ScriptModule
      * Note that this constructor makes a copy of the provided module.
@@ -68,7 +67,7 @@ public:
      * @param module   an instance of the torch module
      * @param properties optional map of properties
      */
-    TorchForce(const torch::jit::Module &module, const std::map<std::string, std::string>& properties = {});
+    TorchForce(const torch::jit::Module& module, const std::map<std::string, std::string>& properties = {});
     /**
      * Get the path to the file containing the network.
      * If the TorchForce instance was constructed with a module, instead of a filename,
@@ -78,7 +77,7 @@ public:
     /**
      * Get the torch module currently in use.
      */
-    const torch::jit::Module & getModule() const;
+    const torch::jit::Module& getModule() const;
     /**
      * Set whether this force makes use of periodic boundary conditions.  If this is set
      * to true, the network must take a 3x3 tensor as its second input, which
@@ -116,6 +115,19 @@ public:
      * @return the index of the parameter that was added
      */
     int addGlobalParameter(const std::string& name, double defaultValue);
+    /**
+     * Add a new energy parameter derivative that the interaction may depend on.
+     *
+     * @param name             the name of the parameter
+     */
+    void addEnergyParameterDerivative(const std::string& name);
+    /**
+     * Get the name of an energy parameter derivative given its global parameter index.
+     *
+     * @param index     the index of the parameter for which to get the name
+     * @return the parameter name
+     */
+    const std::string& getEnergyParameterDerivativeName(int index) const;
     /**
      * Get the name of a global parameter.
      *
@@ -156,13 +168,16 @@ public:
      * @return A map of property names to values.
      */
     const std::map<std::string, std::string>& getProperties() const;
+
 protected:
     OpenMM::ForceImpl* createImpl() const;
+
 private:
     class GlobalParameterInfo;
     std::string file;
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
+    std::vector<std::string> energyParameterDerivatives;
     torch::jit::Module module;
     std::map<std::string, std::string> properties;
     std::string emptyProperty;
