@@ -18,3 +18,6 @@ dependencies:
   - swig
   - sysroot_linux-64 2.17
   - torchani
+  # Required by python<3.8
+  # xref: https://github.com/conda-forge/linux-sysroot-feedstock/issues/52
+  - libxcrypt
