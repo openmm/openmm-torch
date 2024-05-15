@@ -5,12 +5,13 @@ import numpy as np
 import pytest
 import torch as pt
 from torch import Tensor
+from typing import Tuple, List, Optional
 
 
-class ForceWithParameters(pt.nn.Module):
+class EnergyWithParameters(pt.nn.Module):
 
     def __init__(self):
-        super(ForceWithParameters, self).__init__()
+        super(EnergyWithParameters, self).__init__()
 
     def forward(
         self, positions: Tensor, parameter1: Tensor, parameter2: Tensor
@@ -20,9 +21,38 @@ class ForceWithParameters(pt.nn.Module):
         return u_harmonic
 
 
+class EnergyForceWithParameters(pt.nn.Module):
+
+    def __init__(self, use_backwards=False):
+        super(EnergyForceWithParameters, self).__init__()
+        self.use_backwards = use_backwards
+
+    def forward(
+        self, positions: Tensor, parameter1: Tensor, parameter2: Tensor
+    ) -> Tuple[Tensor, Tensor]:
+        x2 = positions.pow(2).sum(dim=1)
+        u_harmonic = ((parameter1 + parameter2**2) * x2).sum()
+        # This way of computing the forces forcefully leaves out the parameter derivatives
+        if self.use_backwards:
+            grad_outputs: List[Optional[Tensor]] = [pt.ones_like(u_harmonic)]
+            dy = pt.autograd.grad(
+                [u_harmonic],
+                [positions],
+                grad_outputs=grad_outputs,
+                create_graph=False,
+                retain_graph=False,
+            )[0]
+            assert dy is not None
+            forces = -dy
+        else:
+            forces = -2 * (parameter1 + parameter2**2) * positions
+        return u_harmonic, forces
+
+
 @pytest.mark.parametrize("use_cv_force", [False, True])
 @pytest.mark.parametrize("platform", ["Reference", "CPU", "CUDA", "OpenCL"])
-def testParameterEnergyDerivatives(use_cv_force, platform):
+@pytest.mark.parametrize("return_forces", [False, True])
+def testParameterEnergyDerivatives(use_cv_force, platform, return_forces):
 
     if pt.cuda.device_count() < 1 and platform == "CUDA":
         pytest.skip("A CUDA device is not available")
@@ -35,13 +65,16 @@ def testParameterEnergyDerivatives(use_cv_force, platform):
         system.addParticle(1.0)
 
     # Create a force
-    pt_force = ForceWithParameters()
+    if return_forces:
+        pt_force = EnergyForceWithParameters()
+    else:
+        pt_force = EnergyWithParameters()
     model = pt.jit.script(pt_force)
     tforce = ot.TorchForce(model, {"useCUDAGraphs": "false"})
     # Add a parameter
     parameter1 = 1.0
     parameter2 = 1.0
-    tforce.setOutputsForces(False)
+    tforce.setOutputsForces(return_forces)
     tforce.addGlobalParameter("parameter1", parameter1)
     tforce.addEnergyParameterDerivative("parameter1")
     tforce.addGlobalParameter("parameter2", parameter2)
