@@ -60,7 +60,7 @@ jobs:
         with:
           cuda: ${{ matrix.cuda-version }}
           linux-local-args: '["--toolkit", "--override"]'
-        if: startsWith(matrix.cuda-version, "11")
+        if: startsWith(matrix.cuda-version, '11')
 
       - name: "Install SDK on MacOS (if needed)"
         run: source devtools/scripts/install_macos_sdk.sh
