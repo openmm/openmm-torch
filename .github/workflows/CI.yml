@@ -78,6 +78,9 @@ jobs:
           NVCC_VERSION: ${{ matrix.nvcc-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
+      - name: Print env file
+        run: cat devtools/conda-envs/${{ matrix.envfile }}.yml
+        
       - name: Manage disk space
         if: matrix.os == 'ubuntu'
         run: |
