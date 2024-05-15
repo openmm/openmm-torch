@@ -33,13 +33,13 @@ jobs:
             envfile: build-ubuntu-22.04
 
           # Latest supported versions
-          - name: Linux (CUDA 12.4, Python 3.12, PyTorch 2.3)
+          - name: Linux (CUDA 12.4, Python 3.12, PyTorch 2.1.2)
             os: ubuntu-22.04
             cuda-version: "12.4"
             gcc-version: "12.3.*"
             nvcc-version: ""
             python-version: "3.12"
-            pytorch-version: "2.3.*"
+            pytorch-version: "2.1.2"
             envfile: build-cuda12
             
           - name: MacOS (Python 3.9, PyTorch 1.9)
