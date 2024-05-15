@@ -51,10 +51,6 @@ using namespace std;
         throw OpenMMException(m.str());                                          \
     }
 
-static map<string, double>& extractEnergyParameterDerivatives(CudaContext& context) {
-    return context.getEnergyParamDerivWorkspace();
-}
-
 CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) : CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
     // Explicitly activate the primary context
     CHECK_RESULT(cuDevicePrimaryCtxRetain(&primaryContext, cu.getDevice()), "Failed to retain the primary context");
@@ -74,6 +70,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
         auto name = force.getEnergyParameterDerivativeName(i);
         energyParameterDerivatives.push_back(name);
 	cu.addEnergyParameterDerivative(name);
+    }
     int numParticles = system.getNumParticles();
 
     // Push the PyTorch context
@@ -161,7 +158,7 @@ std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(Con
         bool requires_grad = std::find(energyParameterDerivatives.begin(), energyParameterDerivatives.end(), name) != energyParameterDerivatives.end();
         auto options = torch::TensorOptions().requires_grad(requires_grad).device(posTensor.device());
         auto tensor = torch::tensor(context.getParameter(name), options);
-        inputs.push_back(tensor);
+        inputs.emplace_back(tensor);
     }
     return inputs;
 }
@@ -271,12 +268,13 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
     // Store parameter energy derivatives
-    auto& derivs = extractEnergyParameterDerivatives(cu);
+    auto& derivs = cu.getEnergyParamDerivWorkspace();
     int firstParameterIndex = usePeriodic ? 2 : 1; // Skip the position and box tensors
     for (int i = 0; i < energyParameterDerivatives.size(); i++) {
         // Compute the derivative of the energy with respect to this parameter.
         // The derivative is stored in the gradient of the parameter tensor.
-        double derivative = inputs[i + firstParameterIndex].toTensor().grad().item<double>();
+        auto parameter_tensor = inputs[i + firstParameterIndex].toTensor();
+        double derivative = parameter_tensor.grad().item<double>();
         auto name = energyParameterDerivatives[i];
         derivs[name] = derivative;
     }
