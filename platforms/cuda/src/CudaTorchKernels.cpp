@@ -66,10 +66,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
-    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++){
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++) {
         auto name = force.getEnergyParameterDerivativeName(i);
         energyParameterDerivatives.push_back(name);
-	cu.addEnergyParameterDerivative(name);
+        cu.addEnergyParameterDerivative(name);
     }
     int numParticles = system.getNumParticles();
 
@@ -86,6 +86,7 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     boxTensor = torch::empty({3, 3}, options);
     energyTensor = torch::empty({0}, options);
     forceTensor = torch::empty({0}, options);
+    gradientTensors.resize(force.getNumEnergyParameterDerivatives(), torch::empty({0}, options));
     // Pop the PyToch context
     CUcontext ctx;
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
@@ -189,31 +190,43 @@ void CudaCalcTorchForceKernel::addForces(torch::Tensor& forceTensor) {
  * implicit synchronizations) will result in a CUDA error.
  */
 static void executeGraph(bool outputsForces, bool includeForces, torch::jit::script::Module& module, vector<torch::jit::IValue>& inputs, torch::Tensor& posTensor, torch::Tensor& energyTensor,
-                         torch::Tensor& forceTensor) {
+                         torch::Tensor& forceTensor, std::vector<torch::Tensor>& gradientTensors) {
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
         energyTensor = outputs->elements()[0].toTensor();
         forceTensor = outputs->elements()[1].toTensor();
     } else {
         energyTensor = module.forward(inputs).toTensor();
-        // Compute force by backpropagating the PyTorch model
-        if (includeForces) {
-            // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
-	    // See https://github.com/openmm/openmm-torch/pull/120/
-	    auto none = torch::Tensor();
-	    std::vector<torch::Tensor> inputs_with_grad;
-	    for (auto& input : inputs) {
-	      if (input.isTensor()) {
-		auto tensor = input.toTensor();
-		if (tensor.requires_grad())
-		  inputs_with_grad.push_back(tensor);
-	      }
-	    }
-	    energyTensor.backward(none, false, false, inputs_with_grad);
-	    // This is minus the forces, we change the sign later on
-            forceTensor = posTensor.grad().clone();
-            // Zero the gradient to avoid accumulating it
-            posTensor.grad().zero_();
+    }
+    // Compute any gradients by backpropagating the PyTorch model
+    std::vector<torch::Tensor> inputs_with_grad;
+    if (includeForces && !outputsForces) {
+        inputs_with_grad.push_back(posTensor);
+    }
+    for (int i = 1; i < inputs.size(); i++) { // Skip the positions
+        auto& input = inputs[i];
+        if (input.isTensor()) {
+            auto tensor = input.toTensor();
+            if (tensor.requires_grad())
+                inputs_with_grad.emplace_back(tensor);
+        }
+    }
+    if (inputs_with_grad.size() > 0) {
+        // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
+        // See https://github.com/openmm/openmm-torch/pull/120/
+        auto none = torch::Tensor();
+        energyTensor.backward(none, false, false, inputs_with_grad);
+        // Store the gradients for the energy parameters
+        bool isForceFirst = includeForces && !outputsForces;
+        for (int i = 0; i < inputs_with_grad.size(); i++) {
+            if (i == 0 && isForceFirst) {
+                // This is minus the forces, we change the sign later on
+                forceTensor = inputs_with_grad[i].grad().clone();
+                inputs_with_grad[i].grad().zero_();
+            } else {
+                gradientTensors[i - isForceFirst] = inputs_with_grad[i].grad().clone();
+                inputs_with_grad[i].grad().zero_();
+            }
         }
     }
 }
@@ -222,15 +235,17 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     // Push to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
     auto inputs = prepareTorchInputs(context);
+    // Store the executeGraph call in a lambda to allow for easy reuse
+    auto payload = [&]() { executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, gradientTensors); };
     if (!useGraphs) {
-        executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+        payload();
     } else {
         // Record graph if not already done
         bool is_graph_captured = false;
         if (graphs.find(includeForces) == graphs.end()) {
             // CUDA graph capture must occur in a non-default stream
             const auto stream = c10::cuda::getStreamFromPool(false, cu.getDeviceIndex());
-	    const c10::cuda::CUDAStreamGuard guard(stream);
+            const c10::cuda::CUDAStreamGuard guard(stream);
             // Warmup the graph workload before capturing.  This first
             // run  before  capture sets  up  allocations  so that  no
             // allocations are  needed after.  Pytorch's  allocator is
@@ -238,14 +253,14 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // record static pointers and shapes during capture.
             try {
                 for (int i = 0; i < this->warmupSteps; i++)
-                    executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+                    payload();
             }
             catch (std::exception& e) {
                 throw OpenMMException(string("TorchForce Failed to warmup the model before graph construction. Torch reported the following error:\n") + e.what());
             }
             graphs[includeForces].capture_begin();
             try {
-                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
+                payload();
                 is_graph_captured = true;
                 graphs[includeForces].capture_end();
             }
@@ -256,10 +271,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 throw OpenMMException(string("TorchForce Failed to capture the model into a CUDA graph. Torch reported the following error:\n") + e.what());
             }
         }
-	// Use the same stream as the OpenMM context, even if it is the default stream
+        // Use the same stream as the OpenMM context, even if it is the default stream
         const auto openmmStream = cu.getCurrentStream();
-	const auto stream = c10::cuda::getStreamFromExternal(openmmStream, cu.getDeviceIndex());
-	const c10::cuda::CUDAStreamGuard guard(stream);
+        const auto stream = c10::cuda::getStreamFromExternal(openmmStream, cu.getDeviceIndex());
+        const c10::cuda::CUDAStreamGuard guard(stream);
         graphs[includeForces].replay();
     }
     if (includeForces) {
@@ -269,12 +284,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
     // Store parameter energy derivatives
     auto& derivs = cu.getEnergyParamDerivWorkspace();
-    int firstParameterIndex = usePeriodic ? 2 : 1; // Skip the position and box tensors
     for (int i = 0; i < energyParameterDerivatives.size(); i++) {
         // Compute the derivative of the energy with respect to this parameter.
         // The derivative is stored in the gradient of the parameter tensor.
-        auto parameter_tensor = inputs[i + firstParameterIndex].toTensor();
-        double derivative = parameter_tensor.grad().item<double>();
+        double derivative = gradientTensors[i].item<double>();
         auto name = energyParameterDerivatives[i];
         derivs[name] = derivative;
     }

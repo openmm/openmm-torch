@@ -71,6 +71,7 @@ private:
     torch::jit::script::Module module;
     torch::Tensor posTensor, boxTensor;
     torch::Tensor energyTensor, forceTensor;
+    std::vector<torch::Tensor> gradientTensors;
     std::vector<std::string> globalNames;
     std::vector<std::string> energyParameterDerivatives;
     bool usePeriodic, outputsForces;
