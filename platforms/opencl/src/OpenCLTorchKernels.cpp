@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -47,6 +47,10 @@ void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchFor
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++) {
+        paramDerivs.insert(force.getEnergyParameterDerivativeName(i));
+        cl.addEnergyParameterDerivative(force.getEnergyParameterDerivativeName(i));
+    }
     int numParticles = system.getNumParticles();
 
     // Inititalize OpenCL objects.
@@ -81,8 +85,14 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             boxTensor = boxTensor.to(torch::kFloat32);
         inputs.push_back(boxTensor);
     }
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    map<string, torch::Tensor> derivInputs;
+    for (const string& name : globalNames) {
+        bool requiresGrad = (paramDerivs.find(name) != paramDerivs.end());
+        torch::Tensor globalTensor = torch::tensor(context.getParameter(name), torch::TensorOptions().requires_grad(requiresGrad));
+        inputs.push_back(globalTensor);
+        if (requiresGrad)
+            derivInputs[name] = globalTensor;
+    }
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -91,10 +101,12 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
     }
     else
         energyTensor = module.forward(inputs).toTensor();
+    bool hasComputedBackward = false;
     if (includeForces) {
         if (!outputsForces) {
             energyTensor.backward();
             forceTensor = posTensor.grad();
+            hasComputedBackward = true;
         }
         if (cl.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
@@ -114,6 +126,14 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
         addForcesKernel.setArg<cl_int>(3, numParticles);
         addForcesKernel.setArg<cl_int>(4, outputsForces ? 1 : -1);
         cl.executeKernel(addForcesKernel, numParticles);
+    }
+    map<string, double>& energyParamDerivs = cl.getEnergyParamDerivWorkspace();
+    for (const string& name : paramDerivs) {
+        if (!hasComputedBackward) {
+            energyTensor.backward();
+            hasComputedBackward = true;
+        }
+        energyParamDerivs[name] += derivInputs[name].grad().item<double>();
     }
     return energyTensor.item<double>();
 }

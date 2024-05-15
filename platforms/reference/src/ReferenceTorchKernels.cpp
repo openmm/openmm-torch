@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -54,6 +54,11 @@ static Vec3* extractBoxVectors(ContextImpl& context) {
     return data->periodicBoxVectors;
 }
 
+static map<string, double>& extractEnergyParameterDerivatives(ContextImpl& context) {
+    ReferencePlatform::PlatformData* data = reinterpret_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
+    return *data->energyParameterDerivatives;
+}
+
 ReferenceCalcTorchForceKernel::~ReferenceCalcTorchForceKernel() {
 }
 
@@ -63,6 +68,8 @@ void ReferenceCalcTorchForceKernel::initialize(const System& system, const Torch
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        paramDerivs.insert(force.getEnergyParameterDerivativeName(i));
 }
 
 double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
@@ -76,8 +83,14 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
         inputs.push_back(boxTensor);
     }
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    map<string, torch::Tensor> derivInputs;
+    for (const string& name : globalNames) {
+        bool requiresGrad = (paramDerivs.find(name) != paramDerivs.end());
+        torch::Tensor globalTensor = torch::tensor(context.getParameter(name), torch::TensorOptions().dtype(torch::kFloat64).requires_grad(requiresGrad));
+        inputs.push_back(globalTensor);
+        if (requiresGrad)
+            derivInputs[name] = globalTensor;
+    }
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -86,10 +99,12 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
     }
     else
         energyTensor = module.forward(inputs).toTensor();
+    bool hasComputedBackward = false;
     if (includeForces) {
         if (!outputsForces) {
             energyTensor.backward();
             forceTensor = posTensor.grad();
+            hasComputedBackward = true;
         }
         if (!(forceTensor.dtype() == torch::kFloat64))
             forceTensor = forceTensor.to(torch::kFloat64);
@@ -98,6 +113,14 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         for (int i = 0; i < numParticles; i++)
             for (int j = 0; j < 3; j++)
                 force[i][j] += forceSign*outputForces[3*i+j];
+    }
+    map<string, double>& energyParamDerivs = extractEnergyParameterDerivatives(context);
+    for (const string& name : paramDerivs) {
+        if (!hasComputedBackward) {
+            energyTensor.backward();
+            hasComputedBackward = true;
+        }
+        energyParamDerivs[name] += derivInputs[name].grad().item<double>();
     }
     return energyTensor.item<double>();
 }

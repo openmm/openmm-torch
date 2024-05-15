@@ -34,6 +34,7 @@
 
 #include "TorchKernels.h"
 #include "openmm/Platform.h"
+#include <set>
 #include <vector>
 
 namespace TorchPlugin {
@@ -67,6 +68,7 @@ private:
     torch::jit::script::Module module;
     std::vector<float> positions, boxVectors;
     std::vector<std::string> globalNames;
+    std::set<std::string> paramDerivs;
     bool usePeriodic, outputsForces;
 };
 

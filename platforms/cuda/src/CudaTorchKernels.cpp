@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
@@ -66,6 +66,10 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++) {
+        paramDerivs.insert(force.getEnergyParameterDerivativeName(i));
+        cu.addEnergyParameterDerivative(force.getEnergyParameterDerivativeName(i));
+    }
     int numParticles = system.getNumParticles();
 
     // Push the PyTorch context
@@ -125,7 +129,7 @@ static void* getTensorPointer(OpenMM::CudaContext& cu, torch::Tensor& tensor) {
 /**
  * Prepare the inputs for the PyTorch model, copying positions from the OpenMM context.
  */
-std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(ContextImpl& context) {
+void CudaCalcTorchForceKernel::prepareTorchInputs(ContextImpl& context, vector<torch::jit::IValue>& inputs, map<string, torch::Tensor>& derivInputs) {
     int numParticles = cu.getNumAtoms();
     // Get pointers to the atomic positions and simulation box
     void* posData = getTensorPointer(cu, posTensor);
@@ -145,11 +149,16 @@ std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(Con
         CHECK_RESULT(cuCtxSynchronize(), "Failed to synchronize the CUDA context"); // Synchronize before switching to the PyTorch context
     }
     // Prepare the input of the PyTorch model
-    vector<torch::jit::IValue> inputs = {posTensor};
+    inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    for (const string& name : globalNames) {
+        bool requiresGrad = (paramDerivs.find(name) != paramDerivs.end());
+        torch::Tensor globalTensor = torch::tensor(context.getParameter(name), torch::TensorOptions().requires_grad(requiresGrad));
+        inputs.push_back(globalTensor);
+        if (requiresGrad)
+            derivInputs[name] = globalTensor;
+    }
     return inputs;
 }
 
@@ -203,7 +212,9 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
 double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     // Push to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
-    auto inputs = prepareTorchInputs(context);
+    vector<torch::jit::IValue> inputs;
+    map<string, torch::Tensor> derivInputs;
+    prepareTorchInputs(context, inputs, derivInputs);
     if (!useGraphs) {
         executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor);
     } else {
@@ -239,13 +250,21 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             }
         }
 	// Use the same stream as the OpenMM context, even if it is the default stream
-        const auto openmmStream = cu.getCurrentStream();
+    const auto openmmStream = cu.getCurrentStream();
 	const auto stream = c10::cuda::getStreamFromExternal(openmmStream, cu.getDeviceIndex());
 	const c10::cuda::CUDAStreamGuard guard(stream);
         graphs[includeForces].replay();
     }
     if (includeForces) {
         addForces(forceTensor);
+    }
+    map<string, double>& energyParamDerivs = cu.getEnergyParamDerivWorkspace();
+    for (const string& name : paramDerivs) {
+        if (!hasComputedBackward) {
+            energyTensor.backward();
+            hasComputedBackward = true;
+        }
+        energyParamDerivs[name] += derivInputs[name].grad().item<double>();
     }
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -140,6 +140,7 @@ void testGlobal() {
     }
     TorchForce* force = new TorchForce("tests/global.pt");
     force->addGlobalParameter("k", 2.0);
+    force->addEnergyParameterDerivative("k");
     system.addForce(force);
 
     // Compute the forces and energy.
@@ -164,12 +165,22 @@ void testGlobal() {
     // Change the global parameter and see if the forces are still correct.
 
     context.setParameter("k", 3.0);
-    state = context.getState(State::Forces);
+    state = context.getState(State::Forces | State::ParameterDerivatives);
     for (int i = 0; i < numParticles; i++) {
         Vec3 pos = positions[i];
         double r = sqrt(pos.dot(pos));
         ASSERT_EQUAL_VEC(pos*(-6.0), state.getForces()[i], 1e-5);
     }
+
+    // Check the gradient of the energy with respect to the parameter.
+
+    double expected = 0.0;
+    for (int i = 0; i < numParticles; i++) {
+        Vec3 pos = positions[i];
+        expected += pos.dot(pos);
+    }
+    double actual = state.getEnergyParameterDerivatives().at("k");
+    ASSERT_EQUAL_TOL(expected, actual, 1e-5);
 }
 
 int main(int argc, char* argv[]) {

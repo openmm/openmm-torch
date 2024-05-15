@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
@@ -36,6 +36,7 @@
 #include "openmm/Force.h"
 #include <map>
 #include <string>
+#include <vector>
 #include <torch/torch.h>
 #include "internal/windowsExportTorch.h"
 
@@ -107,6 +108,11 @@ public:
      */
     int getNumGlobalParameters() const;
     /**
+     * Get the number of global parameters with respect to which the derivative of the energy
+     * should be computed.
+     */
+    int getNumEnergyParameterDerivatives() const;
+    /**
      * Add a new global parameter that the interaction may depend on.  The default value provided to
      * this method is the initial value of the parameter in newly created Contexts.  You can change
      * the value at any time by calling setParameter() on the Context.
@@ -145,6 +151,21 @@ public:
      */
     void setGlobalParameterDefaultValue(int index, double defaultValue);
     /**
+     * Request that this Force compute the derivative of its energy with respect to a global parameter.
+     * The parameter must have already been added with addGlobalParameter().
+     *
+     * @param name             the name of the parameter
+     */
+    void addEnergyParameterDerivative(const std::string& name);
+    /**
+     * Get the name of a global parameter with respect to which this Force should compute the
+     * derivative of the energy.
+     *
+     * @param index     the index of the parameter derivative, between 0 and getNumEnergyParameterDerivatives()
+     * @return the parameter name
+     */
+    const std::string& getEnergyParameterDerivativeName(int index) const;
+    /**
      * Set a value of a property.
      *
      * @param name           the name of the property
@@ -163,6 +184,7 @@ private:
     std::string file;
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
+    std::vector<int> energyParameterDerivatives;
     torch::jit::Module module;
     std::map<std::string, std::string> properties;
     std::string emptyProperty;
