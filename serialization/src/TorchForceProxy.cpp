@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -74,7 +74,7 @@ TorchForceProxy::TorchForceProxy() : SerializationProxy("TorchForce") {
 }
 
 void TorchForceProxy::serialize(const void* object, SerializationNode& node) const {
-    node.setIntProperty("version", 2);
+    node.setIntProperty("version", 3);
     const TorchForce& force = *reinterpret_cast<const TorchForce*>(object);
     node.setStringProperty("file", force.getFile());
     try {
@@ -90,14 +90,16 @@ void TorchForceProxy::serialize(const void* object, SerializationNode& node) con
     node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
     node.setBoolProperty("outputsForces", force.getOutputsForces());
     SerializationNode& globalParams = node.createChildNode("GlobalParameters");
-    for (int i = 0; i < force.getNumGlobalParameters(); i++) {
+    for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalParams.createChildNode("Parameter").setStringProperty("name", force.getGlobalParameterName(i)).setDoubleProperty("default", force.getGlobalParameterDefaultValue(i));
-    }
+    SerializationNode& paramDerivs = node.createChildNode("ParameterDerivatives");
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        paramDerivs.createChildNode("Parameter").setStringProperty("name", force.getEnergyParameterDerivativeName(i));
 }
 
 void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     int storedVersion = node.getIntProperty("version");
-    if (storedVersion > 2)
+    if (storedVersion > 3)
         throw OpenMMException("Unsupported version number");
     TorchForce* force;
     if (storedVersion == 1) {
@@ -121,6 +123,9 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
         if (child.getName() == "GlobalParameters")
             for (auto& parameter : child.getChildren())
                 force->addGlobalParameter(parameter.getStringProperty("name"), parameter.getDoubleProperty("default"));
+        if (child.getName() == "ParameterDerivatives")
+            for (auto& parameter : child.getChildren())
+                force->addEnergyParameterDerivative(parameter.getStringProperty("name"));
     }
     return force;
 }
