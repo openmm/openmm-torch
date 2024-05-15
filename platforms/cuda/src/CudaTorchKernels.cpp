@@ -51,6 +51,12 @@ using namespace std;
         throw OpenMMException(m.str());                                          \
     }
 
+static map<string, double>& extractEnergyParameterDerivatives(CudaContext& context) {
+  //CudaPlatform::PlatformData* data = reinterpret_cast<CudaPlatform::PlatformData*>(context.getPlatformData());
+  //return *data->energyParameterDerivatives;
+  context.getEnergyParamDerivWorkspace();
+}
+
 CudaCalcTorchForceKernel::CudaCalcTorchForceKernel(string name, const Platform& platform, CudaContext& cu) : CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cu(cu) {
     // Explicitly activate the primary context
     CHECK_RESULT(cuDevicePrimaryCtxRetain(&primaryContext, cu.getDevice()), "Failed to retain the primary context");
@@ -66,6 +72,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        energyParameterDerivatives.push_back(force.getEnergyParameterDerivativeName(i));
     int numParticles = system.getNumParticles();
 
     // Push the PyTorch context
@@ -148,8 +156,16 @@ std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(Con
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic)
         inputs.push_back(boxTensor);
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    for (const string& name : globalNames) {
+        // Require grad if the parameter is in the list of energy parameter derivatives
+        bool requires_grad = std::find(energyParameterDerivatives.begin(), energyParameterDerivatives.end(), name) != energyParameterDerivatives.end();
+        auto options = torch::TensorOptions().requires_grad(requires_grad).device(posTensor.device());
+        auto tensor = torch::tensor(context.getParameter(name), options);
+        // parameterTensors.emplace_back(tensor);
+        inputs.push_back(tensor);
+    }
+    // for (const string& name : globalNames)
+    //     inputs.push_back(torch::tensor(context.getParameter(name)));
     return inputs;
 }
 
@@ -210,7 +226,7 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         // Record graph if not already done
         bool is_graph_captured = false;
         if (graphs.find(includeForces) == graphs.end()) {
-	    //CUDA graph capture must occur in a non-default stream
+            // CUDA graph capture must occur in a non-default stream
             const auto stream = c10::cuda::getStreamFromPool(false, cu.getDeviceIndex());
 	    const c10::cuda::CUDAStreamGuard guard(stream);
             // Warmup the graph workload before capturing.  This first
@@ -249,6 +265,16 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     }
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
+    // Store parameter energy derivatives
+    auto& derivs = extractEnergyParameterDerivatives(cu);
+    int firstParameterIndex = usePeriodic ? 2 : 1; // Skip the position and box tensors
+    for (int i = 0; i < energyParameterDerivatives.size(); i++) {
+        // Compute the derivative of the energy with respect to this parameter.
+        // The derivative is stored in the gradient of the parameter tensor.
+        double derivative = inputs[i + firstParameterIndex].toTensor().grad().item<double>();
+        auto name = energyParameterDerivatives[i];
+        derivs[name] = derivative;
+    }
     // Pop to the PyTorch context
     CUcontext ctx;
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");

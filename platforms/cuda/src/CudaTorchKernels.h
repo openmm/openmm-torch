@@ -72,6 +72,7 @@ private:
     torch::Tensor posTensor, boxTensor;
     torch::Tensor energyTensor, forceTensor;
     std::vector<std::string> globalNames;
+    std::vector<std::string> energyParameterDerivatives;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;

@@ -38,6 +38,10 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
+static map<string, double>& extractEnergyParameterDerivatives(OpenCLContext& cl) {
+  return cl.getEnergyParamDerivWorkspace();
+}
+
 OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
 }
 
@@ -81,8 +85,16 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             boxTensor = boxTensor.to(torch::kFloat32);
         inputs.push_back(boxTensor);
     }
-    for (const string& name : globalNames)
-        inputs.push_back(torch::tensor(context.getParameter(name)));
+    for (const string& name : globalNames) {
+        // Require grad if the parameter is in the list of energy parameter derivatives
+        bool requires_grad = std::find(energyParameterDerivatives.begin(), energyParameterDerivatives.end(), name) != energyParameterDerivatives.end();
+        auto options = torch::TensorOptions().requires_grad(requires_grad).device(posTensor.device());
+        auto tensor = torch::tensor(context.getParameter(name), options);
+        // parameterTensors.emplace_back(tensor);
+        inputs.push_back(tensor);
+    }
+    // for (const string& name : globalNames)
+    //     inputs.push_back(torch::tensor(context.getParameter(name)));
     torch::Tensor energyTensor, forceTensor;
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -115,6 +127,15 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
         addForcesKernel.setArg<cl_int>(4, outputsForces ? 1 : -1);
         cl.executeKernel(addForcesKernel, numParticles);
     }
+    // Store parameter energy derivatives
+    auto& derivs = extractEnergyParameterDerivatives(cl);
+    int firstParameterIndex = usePeriodic ? 2 : 1; // Skip the position and box tensors
+    for (int i = 0; i < energyParameterDerivatives.size(); i++) {
+        // Compute the derivative of the energy with respect to this parameter.
+        // The derivative is stored in the gradient of the parameter tensor.
+        double derivative = inputs[i + firstParameterIndex].toTensor().grad().item<double>();
+        auto name = energyParameterDerivatives[i];
+        derivs[name] = derivative;
+    }
     return energyTensor.item<double>();
 }
-

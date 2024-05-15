@@ -49,7 +49,7 @@ public:
     ~OpenCLCalcTorchForceKernel();
     /**
      * Initialize the kernel.
-     * 
+     *
      * @param system         the System this kernel will be applied to
      * @param force          the TorchForce this kernel will be used for
      * @param module         the PyTorch module to use for computing forces and energy
@@ -69,6 +69,7 @@ private:
     OpenMM::OpenCLContext& cl;
     torch::jit::script::Module module;
     std::vector<std::string> globalNames;
+    std::vector<std::string> energyParameterDerivatives;
     bool usePeriodic, outputsForces;
     OpenMM::OpenCLArray networkForces;
     cl::Kernel addForcesKernel;
