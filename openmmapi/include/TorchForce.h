@@ -177,7 +177,7 @@ private:
     std::string file;
     bool usePeriodic, outputsForces;
     std::vector<GlobalParameterInfo> globalParameters;
-    std::vector<std::string> energyParameterDerivatives;
+    std::vector<int> energyParameterDerivatives;
     torch::jit::Module module;
     std::map<std::string, std::string> properties;
     std::string emptyProperty;
