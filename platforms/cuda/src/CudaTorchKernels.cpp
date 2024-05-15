@@ -159,11 +159,8 @@ std::vector<torch::jit::IValue> CudaCalcTorchForceKernel::prepareTorchInputs(Con
         bool requires_grad = std::find(energyParameterDerivatives.begin(), energyParameterDerivatives.end(), name) != energyParameterDerivatives.end();
         auto options = torch::TensorOptions().requires_grad(requires_grad).device(posTensor.device());
         auto tensor = torch::tensor(context.getParameter(name), options);
-        // parameterTensors.emplace_back(tensor);
         inputs.push_back(tensor);
     }
-    // for (const string& name : globalNames)
-    //     inputs.push_back(torch::tensor(context.getParameter(name)));
     return inputs;
 }
 
