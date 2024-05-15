@@ -99,9 +99,25 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
         forceTensor = outputs->elements()[1].toTensor();
     } else
         energyTensor = module.forward(inputs).toTensor();
+    // Compute any gradients by backpropagating the PyTorch model
+    std::vector<torch::Tensor> inputs_with_grad;
+    if (includeForces && !outputsForces) {
+        inputs_with_grad.push_back(posTensor);
+    }
+    for (int i = 1; i < inputs.size(); i++) { // Skip the positions
+        auto& input = inputs[i];
+        if (input.isTensor()) {
+            auto tensor = input.toTensor();
+            if (tensor.requires_grad())
+                inputs_with_grad.emplace_back(tensor);
+        }
+    }
+    if (inputs_with_grad.size() > 0) {
+        auto none = torch::Tensor();
+        energyTensor.backward(none, false, false, inputs_with_grad);
+    }
     if (includeForces) {
         if (!outputsForces) {
-            energyTensor.backward();
             forceTensor = posTensor.grad();
         }
         if (!(forceTensor.dtype() == torch::kFloat64))

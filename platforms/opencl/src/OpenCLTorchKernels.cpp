@@ -47,8 +47,11 @@ void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchFor
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)
         globalNames.push_back(force.getGlobalParameterName(i));
-    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
-        energyParameterDerivatives.push_back(force.getEnergyParameterDerivativeName(i));
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++){
+        auto name = force.getEnergyParameterDerivativeName(i);
+        energyParameterDerivatives.push_back(name);
+	cl.addEnergyParameterDerivative(name);
+    }
 
     int numParticles = system.getNumParticles();
 
@@ -100,9 +103,27 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
     }
     else
         energyTensor = module.forward(inputs).toTensor();
+    // Compute any gradients by backpropagating the PyTorch model
+    std::vector<torch::Tensor> inputs_with_grad;
+    if (includeForces && !outputsForces) {
+        inputs_with_grad.push_back(posTensor);
+    }
+    for (int i = 1; i < inputs.size(); i++) { // Skip the positions
+        auto& input = inputs[i];
+        if (input.isTensor()) {
+            auto tensor = input.toTensor();
+            if (tensor.requires_grad())
+                inputs_with_grad.emplace_back(tensor);
+        }
+    }
+    if (inputs_with_grad.size() > 0) {
+        // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
+        // See https://github.com/openmm/openmm-torch/pull/120/
+        auto none = torch::Tensor();
+        energyTensor.backward(none, false, false, inputs_with_grad);
+    }
     if (includeForces) {
         if (!outputsForces) {
-            energyTensor.backward();
             forceTensor = posTensor.grad();
         }
         if (cl.getUseDoublePrecision()) {
