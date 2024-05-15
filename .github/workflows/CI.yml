@@ -71,7 +71,7 @@ jobs:
         with:
           tokenPrefix: '@'
           tokenSuffix: '@'
-          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+          files: devtools/conda-envs/${{ matrix.envfile }}.yml
         env:
           CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
           GCC_VERSION: ${{ matrix.gcc-version }}
