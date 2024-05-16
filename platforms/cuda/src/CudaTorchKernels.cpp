@@ -85,6 +85,8 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
     boxTensor = torch::empty({3, 3}, options);
     energyTensor = torch::empty({0}, options);
     forceTensor = torch::empty({0}, options);
+    for (const string& name : globalNames)
+        globalTensors[name] = torch::tensor({0}, options);
     // Pop the PyToch context
     CUcontext ctx;
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
@@ -129,7 +131,7 @@ static void* getTensorPointer(OpenMM::CudaContext& cu, torch::Tensor& tensor) {
 /**
  * Prepare the inputs for the PyTorch model, copying positions from the OpenMM context.
  */
-void CudaCalcTorchForceKernel::prepareTorchInputs(ContextImpl& context, vector<torch::jit::IValue>& inputs, map<string, torch::Tensor>& derivInputs) {
+void CudaCalcTorchForceKernel::prepareTorchInputs(ContextImpl& context, vector<torch::jit::IValue>& inputs, map<string, torch::Tensor>& globalTensors) {
     int numParticles = cu.getNumAtoms();
     // Get pointers to the atomic positions and simulation box
     void* posData = getTensorPointer(cu, posTensor);
@@ -153,11 +155,12 @@ void CudaCalcTorchForceKernel::prepareTorchInputs(ContextImpl& context, vector<t
     if (usePeriodic)
         inputs.push_back(boxTensor);
     for (const string& name : globalNames) {
-        bool requiresGrad = (paramDerivs.find(name) != paramDerivs.end());
-        torch::Tensor globalTensor = torch::tensor(context.getParameter(name), torch::TensorOptions().requires_grad(requiresGrad));
-        inputs.push_back(globalTensor);
-        if (requiresGrad)
-            derivInputs[name] = globalTensor;
+        // PyTorch requires us to set requires_grad to false before initializing a tensor.
+        globalTensors[name].set_requires_grad(false);
+        globalTensors[name][0] = context.getParameter(name);
+        if (paramDerivs.find(name) != paramDerivs.end())
+            globalTensors[name].set_requires_grad(true);
+        inputs.push_back(globalTensors[name]);
     }
 }
 
@@ -187,12 +190,12 @@ void CudaCalcTorchForceKernel::addForces(torch::Tensor& forceTensor) {
  * implicit synchronizations) will result in a CUDA error.
  */
 static void executeGraph(bool outputsForces, bool includeForces, torch::jit::script::Module& module, vector<torch::jit::IValue>& inputs, torch::Tensor& posTensor, torch::Tensor& energyTensor,
-                         torch::Tensor& forceTensor, map<string, torch::Tensor>& derivInputs) {
+                         torch::Tensor& forceTensor, map<string, torch::Tensor>& globalTensors, set<string> paramDerivs) {
     vector<torch::Tensor> gradInputs;
-    if (!outputsForces)
+    if (!outputsForces && includeForces)
         gradInputs.push_back(posTensor);
-    for (auto& deriv : derivInputs)
-        gradInputs.push_back(deriv.second);
+    for (auto& name : paramDerivs)
+        gradInputs.push_back(globalTensors[name]);
     auto none = torch::Tensor();
     if (outputsForces) {
         auto outputs = module.forward(inputs).toTuple();
@@ -203,10 +206,11 @@ static void executeGraph(bool outputsForces, bool includeForces, torch::jit::scr
     } else {
         energyTensor = module.forward(inputs).toTensor();
         // Compute force by backpropagating the PyTorch model
-        if (includeForces) {
-            // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
-            // See https://github.com/openmm/openmm-torch/pull/120/
+        // CUDA graph capture sometimes fails if backwards is not explicitly requested w.r.t positions
+        // See https://github.com/openmm/openmm-torch/pull/120/
+        if (gradInputs.size() > 0)
             energyTensor.backward(none, false, false, gradInputs);
+        if (includeForces) {
             // This is minus the forces, we change the sign later on
             forceTensor = posTensor.grad().clone();
             // Zero the gradient to avoid accumulating it
@@ -219,10 +223,9 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     // Push to the PyTorch context
     CHECK_RESULT(cuCtxPushCurrent(primaryContext), "Failed to push the CUDA context");
     vector<torch::jit::IValue> inputs;
-    map<string, torch::Tensor> derivInputs;
-    prepareTorchInputs(context, inputs, derivInputs);
+    prepareTorchInputs(context, inputs, globalTensors);
     if (!useGraphs) {
-        executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, derivInputs);
+        executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, globalTensors, paramDerivs);
     } else {
         // Record graph if not already done
         bool is_graph_captured = false;
@@ -237,14 +240,14 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
             // record static pointers and shapes during capture.
             try {
                 for (int i = 0; i < this->warmupSteps; i++)
-                    executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, derivInputs);
+                    executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, globalTensors, paramDerivs);
             }
             catch (std::exception& e) {
                 throw OpenMMException(string("TorchForce Failed to warmup the model before graph construction. Torch reported the following error:\n") + e.what());
             }
             graphs[includeForces].capture_begin();
             try {
-                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, derivInputs);
+                executeGraph(outputsForces, includeForces, module, inputs, posTensor, energyTensor, forceTensor, globalTensors, paramDerivs);
                 is_graph_captured = true;
                 graphs[includeForces].capture_end();
             }
@@ -254,6 +257,8 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
                 }
                 throw OpenMMException(string("TorchForce Failed to capture the model into a CUDA graph. Torch reported the following error:\n") + e.what());
             }
+            for (const string& name : paramDerivs)
+                globalTensors[name].grad().zero_();
         }
         // Use the same stream as the OpenMM context, even if it is the default stream
         const auto openmmStream = cu.getCurrentStream();
@@ -265,8 +270,10 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
         addForces(forceTensor);
     }
     map<string, double>& energyParamDerivs = cu.getEnergyParamDerivWorkspace();
-    for (const string& name : paramDerivs)
-        energyParamDerivs[name] += derivInputs[name].grad().item<double>();
+    for (const string& name : paramDerivs) {
+        energyParamDerivs[name] += globalTensors[name].grad().item<double>();
+        globalTensors[name].grad().zero_();
+    }
     // Get energy
     const double energy = energyTensor.item<double>(); // This implicitly synchronizes the PyTorch context
     // Pop to the PyTorch context

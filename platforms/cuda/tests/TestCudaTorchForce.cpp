@@ -129,7 +129,7 @@ void testPeriodicForce() {
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 }
 
-void testGlobal() {
+void testGlobal(bool useGraphs) {
     // Create a random cloud of particles.
 
     const int numParticles = 10;
@@ -144,6 +144,7 @@ void testGlobal() {
     TorchForce* force = new TorchForce("tests/global.pt");
     force->addGlobalParameter("k", 2.0);
     force->addEnergyParameterDerivative("k");
+    force->setProperty("useCUDAGraphs", useGraphs ? "true" : "false");
     system.addForce(force);
 
     // Compute the forces and energy.
@@ -195,7 +196,8 @@ int main(int argc, char* argv[]) {
         testForce(false);
         testForce(true);
         testPeriodicForce();
-        testGlobal();
+        testGlobal(false);
+        testGlobal(true);
     }
     catch(const std::exception& e) {
         std::cout << "exception: " << e.what() << std::endl;
