@@ -23,16 +23,6 @@ jobs:
       matrix:
         include:
           # Oldest supported versions
-          # NOTE: renable CUDA 10.2 when it supported by NNPOps (https://github.com/conda-forge/nnpops-feedstock/pull/8)
-          - name: Linux (CUDA 11.0, Python 3.7, PyTorch 1.11)
-            os: ubuntu-22.04
-            cuda-version: "11.0.3"
-            gcc-version: "8.5.*"
-            nvcc-version: "11.0"
-            python-version: "3.7"
-            pytorch-version: "1.11.*"
-
-          # Latest supported versions
           - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.0)
             os: ubuntu-22.04
             cuda-version: "11.8.0"
@@ -40,6 +30,15 @@ jobs:
             nvcc-version: "11.8"
             python-version: "3.10"
             pytorch-version: "2.0.*"
+
+          # Latest supported versions
+          - name: Linux (CUDA 12, Python 3.12, PyTorch 2.1)
+            os: ubuntu-22.04
+            cuda-version: "12"
+            gcc-version: ""
+            nvcc-version: ""
+            python-version: "3.12"
+            pytorch-version: "2.1.*"
 
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
