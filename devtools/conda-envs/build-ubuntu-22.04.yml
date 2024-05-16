@@ -9,7 +9,7 @@ dependencies:
   - nnpops
   - nvcc_linux-64 @NVCC_VERSION@
   - ocl-icd
-  - openmm >=7.7
+  - openmm >=8.1
   - pip
   - pocl
   - pytest

@@ -5,7 +5,7 @@ dependencies:
   - cmake
   - compilers
   - make
-  - openmm >=7.7
+  - openmm >=8.1
   - pip
   - pytest
   - python
