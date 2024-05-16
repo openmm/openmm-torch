@@ -34,7 +34,7 @@ jobs:
           # Latest supported versions
           - name: Linux (CUDA 12, Python 3.12, PyTorch 2.1)
             os: ubuntu-22.04
-            cuda-version: "12"
+            cuda-version: "12.4"
             gcc-version: ""
             nvcc-version: ""
             python-version: "3.12"
