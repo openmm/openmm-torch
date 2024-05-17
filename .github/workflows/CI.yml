@@ -72,7 +72,7 @@ jobs:
         with:
           tokenPrefix: '@'
           tokenSuffix: '@'
-          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+          files: devtools/conda-envs/build-${{ matrix.os }}${{ matrix.cuda-packages }}.yml
         env:
           CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
           GCC_VERSION: ${{ matrix.gcc-version }}
@@ -83,7 +83,7 @@ jobs:
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
-          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          environment-file: devtools/conda-envs/build-${{ matrix.os }}${{ matrix.cuda-packages }}.yml
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
         env:
