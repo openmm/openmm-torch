@@ -78,6 +78,7 @@ jobs:
           GCC_VERSION: ${{ matrix.gcc-version }}
           NVCC_VERSION: ${{ matrix.nvcc-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
+          PYTHON_VERSION: ${{ matrix.python-version }}
 
       - uses: conda-incubator/setup-miniconda@v2
         name: "Install dependencies with Mamba"
