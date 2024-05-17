@@ -56,12 +56,12 @@ jobs:
       - name: "Check out"
         uses: actions/checkout@v2
 
-      - name: "Install CUDA Toolkit on Linux (if needed)"
-        uses: Jimver/cuda-toolkit@v0.2.10
-        with:
-          cuda: ${{ matrix.cuda-version }}
-          linux-local-args: '["--toolkit", "--override"]'
-        if: startsWith(matrix.os, 'ubuntu')
+#      - name: "Install CUDA Toolkit on Linux (if needed)"
+#        uses: Jimver/cuda-toolkit@v0.2.10
+#        with:
+#          cuda: ${{ matrix.cuda-version }}
+#          linux-local-args: '["--toolkit", "--override"]'
+#        if: startsWith(matrix.os, 'ubuntu')
 
       - name: "Install SDK on MacOS (if needed)"
         run: source devtools/scripts/install_macos_sdk.sh
