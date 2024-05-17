@@ -64,7 +64,7 @@ jobs:
         if: startsWith(matrix.os, 'ubuntu')
 
       - name: Manage disk space
-        if: matrix.os == 'ubuntu'
+        if: startsWith(matrix.os, 'ubuntu')
         run: |
           sudo mkdir -p /opt/empty_dir || true
           for d in \
