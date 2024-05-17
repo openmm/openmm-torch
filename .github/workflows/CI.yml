@@ -56,12 +56,36 @@ jobs:
       - name: "Check out"
         uses: actions/checkout@v2
 
-#      - name: "Install CUDA Toolkit on Linux (if needed)"
-#        uses: Jimver/cuda-toolkit@v0.2.10
-#        with:
-#          cuda: ${{ matrix.cuda-version }}
-#          linux-local-args: '["--toolkit", "--override"]'
-#        if: startsWith(matrix.os, 'ubuntu')
+      - name: "Install CUDA Toolkit on Linux (if needed)"
+        uses: Jimver/cuda-toolkit@v0.2.10
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          linux-local-args: '["--toolkit", "--override"]'
+        if: startsWith(matrix.os, 'ubuntu')
+
+      - name: Manage disk space
+        if: matrix.os == 'ubuntu'
+        run: |
+          sudo mkdir -p /opt/empty_dir || true
+          for d in \
+                   /opt/ghc \
+                   /opt/hostedtoolcache \
+                   /usr/lib/jvm \
+                   /usr/local/.ghcup \
+                   /usr/local/lib/android \
+                   /usr/local/share/powershell \
+                   /usr/share/dotnet \
+                   /usr/share/swift \
+                   ; do
+            sudo rsync --stats -a --delete /opt/empty_dir/ $d || true
+          done
+          sudo apt-get purge -y -f firefox \
+                                   google-chrome-stable \
+                                   microsoft-edge-stable
+          sudo apt-get autoremove -y >& /dev/null
+          sudo apt-get autoclean -y >& /dev/null
+          sudo docker image prune --all --force
+          df -h
 
       - name: "Install SDK on MacOS (if needed)"
         run: source devtools/scripts/install_macos_sdk.sh
