@@ -8,6 +8,7 @@ dependencies:
   - cuda-profiler-api
   - cuda-nvrtc-dev
   - cuda-driver-dev
+  - cuda-nvcc
   - gxx_linux-64 @GCC_VERSION@
   - make
   - nnpops
