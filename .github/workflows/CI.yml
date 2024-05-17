@@ -30,6 +30,7 @@ jobs:
             nvcc-version: "11.8"
             python-version: "3.10"
             pytorch-version: "2.0.*"
+            cuda-packages: "cuda11"
 
           # Latest supported versions
           - name: Linux (CUDA 12, Python 3.12, PyTorch 2.1)
@@ -39,6 +40,7 @@ jobs:
             nvcc-version: ""
             python-version: "3.12"
             pytorch-version: "2.1.*"
+            cuda-packages: "cuda12"
 
           - name: MacOS (Python 3.9, PyTorch 1.9)
             os: macos-11
@@ -47,6 +49,7 @@ jobs:
             nvcc-version: ""
             python-version: "3.9"
             pytorch-version: "1.9.*" # Some test fails with 1.10
+            cuda-packages: ""
 
 
     steps:
@@ -69,7 +72,7 @@ jobs:
         with:
           tokenPrefix: '@'
           tokenSuffix: '@'
-          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+          files: devtools/conda-envs/build-${{ matrix.os }}${{ cuda-packages }}.yml
         env:
           CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
           GCC_VERSION: ${{ matrix.gcc-version }}
@@ -80,7 +83,7 @@ jobs:
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
-          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          environment-file: devtools/conda-envs/build-${{ matrix.os }}${{ cuda-packages }}.yml
           miniforge-variant: Mambaforge
           python-version: ${{ matrix.python-version }}
         env:

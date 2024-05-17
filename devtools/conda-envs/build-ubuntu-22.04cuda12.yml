@@ -1,0 +1,24 @@
+name: build
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - libcufft-dev @CUDATOOLKIT_VERSION@
+  - cuda-profiler-api @CUDATOOLKIT_VERSION@
+  - cuda-nvrtc-dev @CUDATOOLKIT_VERSION@
+  - cuda-driver-dev @CUDATOOLKIT_VERSION@
+  - gxx_linux-64 @GCC_VERSION@
+  - make
+  - nnpops
+  - nvcc_linux-64 @NVCC_VERSION@
+  - ocl-icd
+  - openmm >=8.1
+  - pip
+  - pocl
+  - pytest
+  - python
+  - pytorch-gpu @PYTORCH_VERSION@
+  - swig
+  - sysroot_linux-64 2.17
+  - torchani
+  - libxcrypt
