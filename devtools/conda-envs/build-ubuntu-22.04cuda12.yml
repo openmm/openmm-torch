@@ -3,10 +3,11 @@ channels:
   - conda-forge
 dependencies:
   - cmake
-  - libcufft-dev @CUDATOOLKIT_VERSION@
-  - cuda-profiler-api @CUDATOOLKIT_VERSION@
-  - cuda-nvrtc-dev @CUDATOOLKIT_VERSION@
-  - cuda-driver-dev @CUDATOOLKIT_VERSION@
+  - cuda-version @CUDATOOLKIT_VERSION@
+  - libcufft-dev
+  - cuda-profiler-api
+  - cuda-nvrtc-dev
+  - cuda-driver-dev
   - gxx_linux-64 @GCC_VERSION@
   - make
   - nnpops
