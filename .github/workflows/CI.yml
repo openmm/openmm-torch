@@ -61,7 +61,7 @@ jobs:
         with:
           cuda: ${{ matrix.cuda-version }}
           linux-local-args: '["--toolkit", "--override"]'
-        if: startsWith(matrix.os, 'ubuntu') and startsWith(matrix.cuda-version, '11')
+        if: startsWith(matrix.os, 'ubuntu') && startsWith(matrix.cuda-version, '11')
 
       - name: Manage disk space
         if: startsWith(matrix.os, 'ubuntu')
