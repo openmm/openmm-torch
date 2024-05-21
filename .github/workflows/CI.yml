@@ -57,13 +57,10 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Install CUDA Toolkit on Linux (if needed)"
-        env:
-          CUDA_VERSION: ${{ matrix.cuda-version }}
-        run: source devtools/scripts/install_cuda.sh
-#        uses: Jimver/cuda-toolkit@v0.2.15
-#        with:
-#          cuda: ${{ matrix.cuda-version }}
-#          linux-local-args: '["--toolkit", "--override"]'
+        uses: Jimver/cuda-toolkit@v0.2.15
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          linux-local-args: '["--toolkit", "--override"]'
         if: startsWith(matrix.os, 'ubuntu')
 
       - name: Manage disk space
@@ -160,7 +157,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          ctest --output-on-failure --exclude-regex TestCuda
+          ctest --output-on-failure --exclude-regex TestCuda --exclude-regex TestOpenCL
 
       - name: "Run Python test"
         shell: bash -l {0}
