@@ -126,8 +126,10 @@ jobs:
           cd build
 
           SHLIB_EXT=".so"
+          BUILD_OPENCL="ON"
           if [[ ${{ matrix.os }} == macos-* ]]; then
             SHLIB_EXT=".dylib"
+            BUILD_OPENCL="OFF"
           fi
 
           cmake .. \
@@ -135,7 +137,7 @@ jobs:
             -DCMAKE_INSTALL_PREFIX=${CONDA_PREFIX} \
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
-            -DNN_BUILD_OPENCL_LIB=ON \
+            -DNN_BUILD_OPENCL_LIB=${BUILD_OPENCL} \
             -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
             -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT}
 
