@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - cmake
-#  - cuda-version @CUDATOOLKIT_VERSION@
+  - cuda-version @CUDATOOLKIT_VERSION@
 #  - libcufft-dev
 #  - cuda-profiler-api
 #  - cuda-nvrtc-dev
@@ -19,7 +19,7 @@ dependencies:
   - pocl
   - pytest
   - python @PYTHON_VERSION@
-  - pytorch @PYTORCH_VERSION@
+  - pytorch-gpu @PYTORCH_VERSION@
   - swig
   - sysroot_linux-64 2.17
   - torchani
