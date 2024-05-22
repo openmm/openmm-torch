@@ -21,7 +21,7 @@ def testConstructors(model_file):
                          ('../../tests/forces.pt', True, False),
                          ('../../tests/forces.pt', True, True)])
 @pytest.mark.parametrize('use_cv_force', [True, False])
-@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
+@pytest.mark.parametrize('platform', [mm.Platform.getPlatform(i).getName() for i in range(mm.Platform.getNumPlatforms())])
 def testForce(model_file, output_forces, use_module_constructor, use_cv_force, platform):
 
     if pt.cuda.device_count() < 1 and platform == 'CUDA':
