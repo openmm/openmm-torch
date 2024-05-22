@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -129,7 +129,7 @@ void testPeriodicForce() {
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 }
 
-void testGlobal() {
+void testGlobal(bool useGraphs) {
     // Create a random cloud of particles.
 
     const int numParticles = 10;
@@ -143,6 +143,8 @@ void testGlobal() {
     }
     TorchForce* force = new TorchForce("tests/global.pt");
     force->addGlobalParameter("k", 2.0);
+    force->addEnergyParameterDerivative("k");
+    force->setProperty("useCUDAGraphs", useGraphs ? "true" : "false");
     system.addForce(force);
 
     // Compute the forces and energy.
@@ -151,7 +153,7 @@ void testGlobal() {
     Platform& platform = Platform::getPlatformByName("CUDA");
     Context context(system, integ, platform);
     context.setPositions(positions);
-    State state = context.getState(State::Energy | State::Forces);
+    State state = context.getState(State::Energy | State::Forces | State::ParameterDerivatives);
 
     // See if the energy is correct.  The network defines a potential of the form E(r) = k*|r|^2
 
@@ -164,15 +166,26 @@ void testGlobal() {
     }
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 
+    // Check the gradient of the energy with respect to the parameter.
+
+    double expected = 0.0;
+    for (int i = 0; i < numParticles; i++) {
+        Vec3 pos = positions[i];
+        expected += pos.dot(pos);
+    }
+    double actual = state.getEnergyParameterDerivatives().at("k");
+    ASSERT_EQUAL_TOL(expected, actual, 1e-5);
+
     // Change the global parameter and see if the forces are still correct.
 
     context.setParameter("k", 3.0);
-    state = context.getState(State::Forces);
+    state = context.getState(State::Forces | State::ParameterDerivatives);
     for (int i = 0; i < numParticles; i++) {
         Vec3 pos = positions[i];
         double r = sqrt(pos.dot(pos));
         ASSERT_EQUAL_VEC(pos*(-6.0), state.getForces()[i], 1e-5);
     }
+    ASSERT_EQUAL_TOL(expected, state.getEnergyParameterDerivatives().at("k"), 1e-5);
 }
 
 int main(int argc, char* argv[]) {
@@ -183,7 +196,8 @@ int main(int argc, char* argv[]) {
         testForce(false);
         testForce(true);
         testPeriodicForce();
-        testGlobal();
+        testGlobal(false);
+        testGlobal(true);
     }
     catch(const std::exception& e) {
         std::cout << "exception: " << e.what() << std::endl;
