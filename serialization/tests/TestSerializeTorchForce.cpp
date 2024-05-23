@@ -80,8 +80,8 @@ void serializeAndDeserialize(TorchForce force) {
 }
 
 void testSerializationFromModule() {
-    string fileName = "tests/forces.pt";
-    torch::jit::Module module = torch::jit::load(fileName);
+    ifstream file("tests/forces.pt");
+    torch::jit::Module module = torch::jit::load(file);
     TorchForce force(module);
     serializeAndDeserialize(force);
 }

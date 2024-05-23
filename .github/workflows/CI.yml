@@ -146,8 +146,6 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          pwd
-          ls -l tests
           ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
 
       - name: "Run Python test"
