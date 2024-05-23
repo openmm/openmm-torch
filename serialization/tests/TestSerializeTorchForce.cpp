@@ -79,7 +79,10 @@ void serializeAndDeserialize(TorchForce force) {
         ASSERT_EQUAL(force.getEnergyParameterDerivativeName(i), force2.getEnergyParameterDerivativeName(i));
 }
 
+#include <filesystem>
 void testSerializationFromModule() {
+    printf("Current directory:\n");
+    cout<<filesystem::current_path()<<endl;
     ifstream file("tests/forces.pt");
     torch::jit::Module module = torch::jit::load(file);
     TorchForce force(module);
