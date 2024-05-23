@@ -81,8 +81,7 @@ void serializeAndDeserialize(TorchForce force) {
 
 #include <filesystem>
 void testSerializationFromModule() {
-    printf("Current directory:\n");
-    cout<<filesystem::current_path()<<endl;
+    printf("Current directory: %s\n", filesystem::current_path().c_str());
     ifstream file("tests/forces.pt");
     torch::jit::Module module = torch::jit::load(file);
     TorchForce force(module);
