@@ -105,5 +105,5 @@ int main() {
         return 1;
     }
     cout << "Done" << endl;
-    return 0;
+    return 1;
 }
