@@ -79,10 +79,9 @@ void serializeAndDeserialize(TorchForce force) {
         ASSERT_EQUAL(force.getEnergyParameterDerivativeName(i), force2.getEnergyParameterDerivativeName(i));
 }
 
-#include <filesystem>
 void testSerializationFromModule() {
-    ifstream file("tests/forces.pt");
-    torch::jit::Module module = torch::jit::load(file);
+    string fileName = "tests/forces.pt";
+    torch::jit::Module module = torch::jit::load(fileName);
     TorchForce force(module);
     serializeAndDeserialize(force);
 }
@@ -95,15 +94,14 @@ void testSerializationFromFile() {
 
 int main() {
     try {
-        printf("Current directory: %s\n", filesystem::current_path().c_str());
         registerTorchSerializationProxies();
-        //testSerializationFromFile();
-        //testSerializationFromModule();
+        testSerializationFromFile();
+        testSerializationFromModule();
     }
     catch (const exception& e) {
         cout << "exception: " << e.what() << endl;
         return 1;
     }
     cout << "Done" << endl;
-    return 1;
+    return 0;
 }
