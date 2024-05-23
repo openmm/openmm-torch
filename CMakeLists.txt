@@ -15,7 +15,7 @@ SET(CMAKE_PREFIX_PATH "${PYTORCH_DIR}")
 FIND_PACKAGE(Torch REQUIRED)
 
 # Specify the C++ version we are building for.
-SET (CMAKE_CXX_STANDARD 14)
+SET (CMAKE_CXX_STANDARD 17)
 
 # Set flags for linking on mac
 IF(APPLE)
