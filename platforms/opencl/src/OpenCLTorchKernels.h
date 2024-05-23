@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -35,6 +35,7 @@
 #include "TorchKernels.h"
 #include "openmm/opencl/OpenCLContext.h"
 #include "openmm/opencl/OpenCLArray.h"
+#include <set>
 
 namespace TorchPlugin {
 
@@ -69,6 +70,7 @@ private:
     OpenMM::OpenCLContext& cl;
     torch::jit::script::Module module;
     std::vector<std::string> globalNames;
+    std::set<std::string> paramDerivs;
     bool usePeriodic, outputsForces;
     OpenMM::OpenCLArray networkForces;
     cl::Kernel addForcesKernel;

@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -50,6 +50,7 @@ void serializeAndDeserialize(TorchForce force) {
     force.addGlobalParameter("y", 2.221);
     force.setUsesPeriodicBoundaryConditions(true);
     force.setOutputsForces(true);
+    force.addEnergyParameterDerivative("y");
 
     // Serialize and then deserialize it.
 
@@ -73,17 +74,20 @@ void serializeAndDeserialize(TorchForce force) {
     }
     ASSERT_EQUAL(force.usesPeriodicBoundaryConditions(), force2.usesPeriodicBoundaryConditions());
     ASSERT_EQUAL(force.getOutputsForces(), force2.getOutputsForces());
+    ASSERT_EQUAL(force.getNumEnergyParameterDerivatives(), force2.getNumEnergyParameterDerivatives());
+    for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
+        ASSERT_EQUAL(force.getEnergyParameterDerivativeName(i), force2.getEnergyParameterDerivativeName(i));
 }
 
 void testSerializationFromModule() {
-    string fileName = "../../tests/forces.pt";
+    string fileName = "tests/forces.pt";
     torch::jit::Module module = torch::jit::load(fileName);
     TorchForce force(module);
     serializeAndDeserialize(force);
 }
 
 void testSerializationFromFile() {
-    string fileName = "../../tests/forces.pt";
+    string fileName = "tests/forces.pt";
     TorchForce force(fileName);
     serializeAndDeserialize(force);
 }

@@ -140,6 +140,7 @@ void testGlobal() {
     }
     TorchForce* force = new TorchForce("tests/global.pt");
     force->addGlobalParameter("k", 2.0);
+    force->addEnergyParameterDerivative("k");
     system.addForce(force);
 
     // Compute the forces and energy.
@@ -148,7 +149,7 @@ void testGlobal() {
     Platform& platform = Platform::getPlatformByName("Reference");
     Context context(system, integ, platform);
     context.setPositions(positions);
-    State state = context.getState(State::Energy | State::Forces);
+    State state = context.getState(State::Energy | State::Forces | State::ParameterDerivatives);
 
     // See if the energy is correct.  The network defines a potential of the form E(r) = k*|r|^2
 
@@ -161,15 +162,26 @@ void testGlobal() {
     }
     ASSERT_EQUAL_TOL(expectedEnergy, state.getPotentialEnergy(), 1e-5);
 
+    // Check the gradient of the energy with respect to the parameter.
+
+    double expected = 0.0;
+    for (int i = 0; i < numParticles; i++) {
+        Vec3 pos = positions[i];
+        expected += pos.dot(pos);
+    }
+    double actual = state.getEnergyParameterDerivatives().at("k");
+    ASSERT_EQUAL_TOL(expected, actual, 1e-5);
+
     // Change the global parameter and see if the forces are still correct.
 
     context.setParameter("k", 3.0);
-    state = context.getState(State::Forces);
+    state = context.getState(State::Forces | State::ParameterDerivatives);
     for (int i = 0; i < numParticles; i++) {
         Vec3 pos = positions[i];
         double r = sqrt(pos.dot(pos));
         ASSERT_EQUAL_VEC(pos*(-6.0), state.getForces()[i], 1e-5);
     }
+    ASSERT_EQUAL_TOL(expected, state.getEnergyParameterDerivatives().at("k"), 1e-5);
 }
 
 int main() {

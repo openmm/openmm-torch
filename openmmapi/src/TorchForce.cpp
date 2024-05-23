@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
@@ -110,6 +110,24 @@ double TorchForce::getGlobalParameterDefaultValue(int index) const {
 void TorchForce::setGlobalParameterDefaultValue(int index, double defaultValue) {
     ASSERT_VALID_INDEX(index, globalParameters);
     globalParameters[index].defaultValue = defaultValue;
+}
+
+int TorchForce::getNumEnergyParameterDerivatives() const {
+    return energyParameterDerivatives.size();
+}
+
+void TorchForce::addEnergyParameterDerivative(const string& name) {
+    for (int i = 0; i < globalParameters.size(); i++)
+        if (name == globalParameters[i].name) {
+            energyParameterDerivatives.push_back(i);
+            return;
+        }
+    throw OpenMMException(string("addEnergyParameterDerivative: Unknown global parameter '"+name+"'"));
+}
+
+const string& TorchForce::getEnergyParameterDerivativeName(int index) const {
+    ASSERT_VALID_INDEX(index, energyParameterDerivatives);
+    return globalParameters[energyParameterDerivatives[index]].name;
 }
 
 void TorchForce::setProperty(const std::string& name, const std::string& value) {

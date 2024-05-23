@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2022 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
@@ -37,6 +37,7 @@
 #include "openmm/cuda/CudaArray.h"
 #include <torch/version.h>
 #include <ATen/cuda/CUDAGraph.h>
+#include <set>
 
 namespace TorchPlugin {
 
@@ -71,12 +72,14 @@ private:
     torch::jit::script::Module module;
     torch::Tensor posTensor, boxTensor;
     torch::Tensor energyTensor, forceTensor;
+    std::map<std::string, torch::Tensor> globalTensors;
     std::vector<std::string> globalNames;
+    std::set<std::string> paramDerivs;
     bool usePeriodic, outputsForces;
     CUfunction copyInputsKernel, addForcesKernel;
     CUcontext primaryContext;
     std::map<bool, at::cuda::CUDAGraph> graphs;
-    std::vector<torch::jit::IValue> prepareTorchInputs(OpenMM::ContextImpl& context);
+    void prepareTorchInputs(OpenMM::ContextImpl& context, std::vector<torch::jit::IValue>& inputs, std::map<std::string, torch::Tensor>& derivInputs);
     bool useGraphs;
     void addForces(torch::Tensor& forceTensor);
     int warmupSteps;
