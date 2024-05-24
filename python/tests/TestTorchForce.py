@@ -54,8 +54,10 @@ def testForce(model_file, output_forces, use_module_constructor, use_cv_force, p
 
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
-    platform = mm.Platform.getPlatformByName(platform)
-    context = mm.Context(system, integ, platform)
+    try:
+        context = mm.Context(system, integ, mm.Platform.getPlatformByName(platform))
+    except:
+        pytest.skip(f'Unable to create Context with {platform}')
     context.setPositions(positions)
     state = context.getState(getEnergy=True, getForces=True)
 
