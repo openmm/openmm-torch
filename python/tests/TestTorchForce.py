@@ -21,7 +21,7 @@ def testConstructors(model_file):
                          ('../../tests/forces.pt', True, False),
                          ('../../tests/forces.pt', True, True)])
 @pytest.mark.parametrize('use_cv_force', [True, False])
-@pytest.mark.parametrize('platform', ['Reference', 'CPU', 'CUDA', 'OpenCL'])
+@pytest.mark.parametrize('platform', [mm.Platform.getPlatform(i).getName() for i in range(mm.Platform.getNumPlatforms())])
 def testForce(model_file, output_forces, use_module_constructor, use_cv_force, platform):
 
     if pt.cuda.device_count() < 1 and platform == 'CUDA':
@@ -54,8 +54,10 @@ def testForce(model_file, output_forces, use_module_constructor, use_cv_force, p
 
     # Compute the forces and energy.
     integ = mm.VerletIntegrator(1.0)
-    platform = mm.Platform.getPlatformByName(platform)
-    context = mm.Context(system, integ, platform)
+    try:
+        context = mm.Context(system, integ, mm.Platform.getPlatformByName(platform))
+    except:
+        pytest.skip(f'Unable to create Context with {platform}')
     context.setPositions(positions)
     state = context.getState(getEnergy=True, getForces=True)
 

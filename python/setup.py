@@ -9,12 +9,12 @@ nn_plugin_library_dir = '@NN_PLUGIN_LIBRARY_DIR@'
 torch_dir, _ = os.path.split('@TORCH_LIBRARY@')
 
 # setup extra compile and link arguments on Mac
-extra_compile_args = ['-std=c++14']
+extra_compile_args = ['-std=c++17']
 extra_link_args = []
 
 if platform.system() == 'Darwin':
-    extra_compile_args += ['-stdlib=libc++', '-mmacosx-version-min=10.7']
-    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.7', '-Wl', '-rpath', openmm_dir+'/lib', '-rpath', torch_dir]
+    extra_compile_args += ['-stdlib=libc++', '-mmacosx-version-min=10.13']
+    extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.13', '-Wl', '-rpath', openmm_dir+'/lib', '-rpath', torch_dir]
 
 extension = Extension(name='_openmmtorch',
                       sources=['TorchPluginWrapper.cpp'],
