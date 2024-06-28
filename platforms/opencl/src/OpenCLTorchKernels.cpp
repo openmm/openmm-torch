@@ -55,6 +55,8 @@ void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchFor
 
     // Inititalize OpenCL objects.
 
+    this->module.eval();
+    this->module = torch::jit::freeze(this->module);
     map<string, string> defines;
     if (cl.getUseDoublePrecision()) {
         networkForces.initialize<double>(cl, 3*numParticles, "networkForces");
