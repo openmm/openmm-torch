@@ -64,6 +64,8 @@ ReferenceCalcTorchForceKernel::~ReferenceCalcTorchForceKernel() {
 
 void ReferenceCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
+    this->module.eval();
+    this->module = torch::jit::freeze(this->module);
     usePeriodic = force.usesPeriodicBoundaryConditions();
     outputsForces = force.getOutputsForces();
     for (int i = 0; i < force.getNumGlobalParameters(); i++)

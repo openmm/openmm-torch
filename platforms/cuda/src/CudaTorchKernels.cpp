@@ -79,7 +79,9 @@ void CudaCalcTorchForceKernel::initialize(const System& system, const TorchForce
 
     // Initialize CUDA objects for PyTorch
     const torch::Device device(torch::kCUDA, cu.getDeviceIndex()); // This implicitly initialize PyTorch
-    module.to(device);
+    this->module.to(device);
+    this->module.eval();
+    this->module = torch::jit::freeze(this->module);
     torch::TensorOptions options = torch::TensorOptions().device(device).dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
     posTensor = torch::empty({numParticles, 3}, options.requires_grad(!outputsForces));
     boxTensor = torch::empty({3, 3}, options);
