@@ -256,6 +256,47 @@ to return forces.
 torch_force.setOutputsForces(True)
 ```
 
+Computing energy derivatives with respect to global parameters
+--------------------------------------------------------------
+
+TorchForce can compute derivatives of the energy with respect to global parameters.. In order to do so the global parameters must be registered as energy derivatives. This is done by calling `addEnergyParameterDerivative()` for each parameter.
+
+The parameter derivatives can be queried by calling `getEnergyParameterDerivatives()` on the `State` object returned by `Context.getState()`. The result is a dictionary with the parameter names as keys and the derivatives as values.
+
+```python
+import torch as pt
+from openmmtorch import TorchForce
+import openmm as mm
+
+
+class ForceWithParameters(pt.nn.Module):
+
+    def __init__(self):
+        super(ForceWithParameters, self).__init__()
+
+    def forward(self, positions: pt.Tensor, k: pt.Tensor) -> pt.Tensor:
+        return k * pt.sum(positions**2)
+
+
+numParticles = 10
+system = mm.System()
+for _ in range(numParticles):
+    system.addParticle(1.0)
+
+model = pt.jit.script(ForceWithParameters())
+tforce = TorchForce(model)
+tforce.setOutputsForces(False)
+tforce.addGlobalParameter("k", 2.0)
+tforce.addEnergyParameterDerivative("k")
+system.addForce(tforce)
+context = mm.Context(system, mm.VerletIntegrator(1.0))
+context.setPositions(pt.rand(numParticles, 3).numpy())
+state = context.getState(getParameterDerivatives=True)
+dEdk = state.getEnergyParameterDerivatives()["k"]
+```
+
+
+
 Recording the model into a CUDA graph
 -------------------------------------
 
