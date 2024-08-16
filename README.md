@@ -265,17 +265,17 @@ The parameter derivatives can be queried by calling `getEnergyParameterDerivativ
 
 ```python
 import torch as pt
-from torch import Tensor
 from openmmtorch import TorchForce
 import openmm as mm
+
 
 class ForceWithParameters(pt.nn.Module):
 
     def __init__(self):
         super(ForceWithParameters, self).__init__()
 
-	def forward(self, positions: Tensor, k: Tensor) -> Tensor:
-		return k*torch.sum(positions**2)
+    def forward(self, positions: pt.Tensor, k: pt.Tensor) -> pt.Tensor:
+        return k * pt.sum(positions**2)
 
 
 numParticles = 10
@@ -285,15 +285,12 @@ for _ in range(numParticles):
 
 model = pt.jit.script(ForceWithParameters())
 tforce = TorchForce(model)
-force.setOutputsForces(False)
-force.addGlobalParameter("k", 2.0)
-force.addEnergyParameterDerivative("k")
-system.addForce(force)
-integ = mm.VerletIntegrator(1.0)
-platform = mm.Platform.getPlatformByName(platform)
-context = mm.Context(system, integ, platform)
-positions = np.random.rand(numParticles, 3)
-context.setPositions(positions)
+tforce.setOutputsForces(False)
+tforce.addGlobalParameter("k", 2.0)
+tforce.addEnergyParameterDerivative("k")
+system.addForce(tforce)
+context = mm.Context(system, mm.VerletIntegrator(1.0))
+context.setPositions(pt.rand(numParticles, 3).numpy())
 state = context.getState(getParameterDerivatives=True)
 dEdk = state.getEnergyParameterDerivatives()["k"]
 ```
