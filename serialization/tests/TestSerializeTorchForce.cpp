@@ -51,6 +51,8 @@ void serializeAndDeserialize(TorchForce force) {
     force.setUsesPeriodicBoundaryConditions(true);
     force.setOutputsForces(true);
     force.addEnergyParameterDerivative("y");
+    force.setProperty("useCUDAGraphs", "true");
+    force.setProperty("CUDAGraphWarmupSteps", "5");
 
     // Serialize and then deserialize it.
 
@@ -77,6 +79,9 @@ void serializeAndDeserialize(TorchForce force) {
     ASSERT_EQUAL(force.getNumEnergyParameterDerivatives(), force2.getNumEnergyParameterDerivatives());
     for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++)
         ASSERT_EQUAL(force.getEnergyParameterDerivativeName(i), force2.getEnergyParameterDerivativeName(i));
+    ASSERT_EQUAL(force.getProperties().size(), force2.getProperties().size());
+    for (auto& prop : force.getProperties())
+        ASSERT_EQUAL(prop.second, force2.getProperties().at(prop.first));
 }
 
 void testSerializationFromModule() {
