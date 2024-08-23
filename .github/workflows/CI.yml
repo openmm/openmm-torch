@@ -30,13 +30,13 @@ jobs:
             python-version: "3.10"
             pytorch-version: "2.1.*"
 
-          - name: MacOS (Python 3.9, PyTorch 1.9)
-            os: macos-11
+          - name: MacOS (Python 3.11, PyTorch 2.4)
+            os: macos-latest
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
-            python-version: "3.9"
-            pytorch-version: "1.9.*" # Some test fails with 1.10
+            python-version: "3.11"
+            pytorch-version: "2.4.*"
 
 
     steps:

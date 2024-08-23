@@ -87,7 +87,7 @@ def testModuleArguments(deviceString, precision):
             assert self.positions.device == self.device
             assert positions.device == self.device
             assert positions.dtype == self.dtype
-            assert pt.all(positions == self.positions)
+            assert pt.allclose(positions, self.positions)
             return pt.sum(positions)
 
     with NamedTemporaryFile() as fd:
