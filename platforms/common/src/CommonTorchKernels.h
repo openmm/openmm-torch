@@ -1,5 +1,5 @@
-#ifndef OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_
-#define OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_
+#ifndef COMMON_TORCH_KERNELS_H_
+#define COMMON_TORCH_KERNELS_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -32,21 +32,50 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include <string>
+#include "TorchKernels.h"
+#include "openmm/common/ComputeContext.h"
+#include "openmm/common/ComputeArray.h"
+#include <set>
 
 namespace TorchPlugin {
 
 /**
- * This class is a central holding place for the source code of OpenCL kernels.
- * The CMake build script inserts declarations into it based on the .cl files in the
- * kernels subfolder.
+ * This kernel is invoked by TorchForce to calculate the forces acting on the system and the energy of the system.
  */
-
-class OpenCLTorchKernelSources {
+class CommonCalcTorchForceKernel : public CalcTorchForceKernel {
 public:
-@CL_FILE_DECLARATIONS@
+    CommonCalcTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ComputeContext& cc) :
+            CalcTorchForceKernel(name, platform), hasInitializedKernel(false), cc(cc) {
+    }
+    ~CommonCalcTorchForceKernel();
+    /**
+     * Initialize the kernel.
+     * 
+     * @param system         the System this kernel will be applied to
+     * @param force          the TorchForce this kernel will be used for
+     * @param module         the PyTorch module to use for computing forces and energy
+     */
+    void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module);
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+private:
+    bool hasInitializedKernel;
+    OpenMM::ComputeContext& cc;
+    torch::jit::script::Module module;
+    std::vector<std::string> globalNames;
+    std::set<std::string> paramDerivs;
+    bool usePeriodic, outputsForces;
+    OpenMM::ComputeArray networkForces;
+    OpenMM::ComputeKernel addForcesKernel;
 };
 
-} // namespace NNePlugin
+} // namespace TorchPlugin
 
-#endif /*OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_*/
+#endif /*COMMON_TORCH_KERNELS_H_*/

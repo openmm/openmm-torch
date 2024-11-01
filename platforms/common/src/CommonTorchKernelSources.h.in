@@ -1,3 +1,6 @@
+#ifndef OPENMM_COMMON_TORCH_KERNEL_SOURCES_H_
+#define OPENMM_COMMON_TORCH_KERNEL_SOURCES_H_
+
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
@@ -6,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2024 Stanford University and the Authors.           *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -29,8 +32,21 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "OpenCLTorchKernelSources.h"
+#include <string>
 
-using namespace TorchPlugin;
-using namespace std;
+namespace TorchPlugin {
 
+/**
+ * This class is a central holding place for the source code of Common kernels.
+ * The CMake build script inserts declarations into it based on the .cc files in the
+ * kernels subfolder.
+ */
+
+class CommonTorchKernelSources {
+public:
+@FILE_DECLARATIONS@
+};
+
+} // namespace NNePlugin
+
+#endif /*OPENMM_COMMON_TORCH_KERNEL_SOURCES_H_*/

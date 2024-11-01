@@ -29,8 +29,8 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "OpenCLTorchKernels.h"
-#include "OpenCLTorchKernelSources.h"
+#include "CommonTorchKernels.h"
+#include "CommonTorchKernelSources.h"
 #include "openmm/internal/ContextImpl.h"
 #include <map>
 
@@ -38,10 +38,10 @@ using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-OpenCLCalcTorchForceKernel::~OpenCLCalcTorchForceKernel() {
+CommonCalcTorchForceKernel::~CommonCalcTorchForceKernel() {
 }
 
-void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
+void CommonCalcTorchForceKernel::initialize(const System& system, const TorchForce& force, torch::jit::script::Module& module) {
     this->module = module;
     usePeriodic = force.usesPeriodicBoundaryConditions();
     outputsForces = force.getOutputsForces();
@@ -49,41 +49,46 @@ void OpenCLCalcTorchForceKernel::initialize(const System& system, const TorchFor
         globalNames.push_back(force.getGlobalParameterName(i));
     for (int i = 0; i < force.getNumEnergyParameterDerivatives(); i++) {
         paramDerivs.insert(force.getEnergyParameterDerivativeName(i));
-        cl.addEnergyParameterDerivative(force.getEnergyParameterDerivativeName(i));
+        cc.addEnergyParameterDerivative(force.getEnergyParameterDerivativeName(i));
     }
     int numParticles = system.getNumParticles();
 
-    // Inititalize OpenCL objects.
+    // Inititalize Common objects.
 
     this->module.eval();
     this->module = torch::jit::freeze(this->module);
     map<string, string> defines;
-    if (cl.getUseDoublePrecision()) {
-        networkForces.initialize<double>(cl, 3*numParticles, "networkForces");
+    if (cc.getUseDoublePrecision()) {
+        networkForces.initialize<double>(cc, 3*numParticles, "networkForces");
         defines["FORCES_TYPE"] = "double";
     }
     else {
-        networkForces.initialize<float>(cl, 3*numParticles, "networkForces");
+        networkForces.initialize<float>(cc, 3*numParticles, "networkForces");
         defines["FORCES_TYPE"] = "float";
     }
-    cl::Program program = cl.createProgram(OpenCLTorchKernelSources::torchForce, defines);
-    addForcesKernel = cl::Kernel(program, "addForces");
+    ComputeProgram program = cc.compileProgram(CommonTorchKernelSources::torchForce, defines);
+    addForcesKernel = program->createKernel("addForces");
+    addForcesKernel->addArg(networkForces);
+    addForcesKernel->addArg(cc.getForceBuffers());
+    addForcesKernel->addArg(cc.getAtomIndexArray());
+    addForcesKernel->addArg(numParticles);
+    addForcesKernel->addArg();
 }
 
-double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
+double CommonCalcTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
     vector<Vec3> pos;
     context.getPositions(pos);
-    int numParticles = cl.getNumAtoms();
+    int numParticles = cc.getNumAtoms();
     torch::Tensor posTensor = torch::from_blob(pos.data(), {numParticles, 3}, torch::kFloat64);
-    if (!cl.getUseDoublePrecision())
+    if (!cc.getUseDoublePrecision())
         posTensor = posTensor.to(torch::kFloat32);
     posTensor.set_requires_grad(true);
     vector<torch::jit::IValue> inputs = {posTensor};
     if (usePeriodic) {
         Vec3 box[3];
-        cl.getPeriodicBoxVectors(box[0], box[1], box[2]);
+        cc.getPeriodicBoxVectors(box[0], box[1], box[2]);
         torch::Tensor boxTensor = torch::from_blob(box, {3, 3}, torch::kFloat64);
-        if (!cl.getUseDoublePrecision())
+        if (!cc.getUseDoublePrecision())
             boxTensor = boxTensor.to(torch::kFloat32);
         inputs.push_back(boxTensor);
     }
@@ -110,7 +115,7 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             forceTensor = posTensor.grad();
             hasComputedBackward = true;
         }
-        if (cl.getUseDoublePrecision()) {
+        if (cc.getUseDoublePrecision()) {
             if (!(forceTensor.dtype() == torch::kFloat64))
                 forceTensor = forceTensor.to(torch::kFloat64);
             double* data = forceTensor.data_ptr<double>();
@@ -122,14 +127,10 @@ double OpenCLCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             float* data = forceTensor.data_ptr<float>();
             networkForces.upload(data);
         }
-        addForcesKernel.setArg<cl::Buffer>(0, networkForces.getDeviceBuffer());
-        addForcesKernel.setArg<cl::Buffer>(1, cl.getForceBuffers().getDeviceBuffer());
-        addForcesKernel.setArg<cl::Buffer>(2, cl.getAtomIndexArray().getDeviceBuffer());
-        addForcesKernel.setArg<cl_int>(3, numParticles);
-        addForcesKernel.setArg<cl_int>(4, outputsForces ? 1 : -1);
-        cl.executeKernel(addForcesKernel, numParticles);
+        addForcesKernel->setArg(4, outputsForces ? 1 : -1);
+        addForcesKernel->execute(numParticles);
     }
-    map<string, double>& energyParamDerivs = cl.getEnergyParamDerivWorkspace();
+    map<string, double>& energyParamDerivs = cc.getEnergyParamDerivWorkspace();
     for (const string& name : paramDerivs) {
         if (!hasComputedBackward) {
             energyTensor.backward();
