@@ -1,0 +1,66 @@
+#---------------------------------------------------
+# OpenMM Torch Plugin HIP Platform
+#----------------------------------------------------
+
+# Collect up information about the version of the OpenMM library we're building
+# and make it available to the code so it can be built into the binaries.
+
+SET(NN_HIP_LIBRARY_NAME OpenMMTorchHIP)
+
+SET(SHARED_TARGET ${NN_HIP_LIBRARY_NAME})
+
+
+# These are all the places to search for header files which are
+# to be part of the API.
+SET(API_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/include" "${CMAKE_CURRENT_SOURCE_DIR}/include/internal")
+
+# Locate header files.
+SET(API_INCLUDE_FILES)
+FOREACH(dir ${API_INCLUDE_DIRS})
+    FILE(GLOB fullpaths ${dir}/*.h)
+    SET(API_INCLUDE_FILES ${API_INCLUDE_FILES} ${fullpaths})
+ENDFOREACH(dir)
+
+# collect up source files
+SET(SOURCE_FILES) # empty
+SET(SOURCE_INCLUDE_FILES)
+
+FILE(GLOB_RECURSE src_files ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/${subdir}/src/*.c ${CMAKE_CURRENT_SOURCE_DIR}/../common/src/*.cpp)
+FILE(GLOB incl_files ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h)
+SET(SOURCE_FILES         ${SOURCE_FILES}         ${src_files})   #append
+SET(SOURCE_INCLUDE_FILES ${SOURCE_INCLUDE_FILES} ${incl_files})
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/include)
+
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_SOURCE_DIR}/platforms/hip/include)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_SOURCE_DIR}/platforms/hip/src)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/platforms/hip/src)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_SOURCE_DIR}/platforms/common/src)
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_BINARY_DIR}/platforms/common/src)
+
+# Set variables needed for encoding kernel sources into a C++ class
+
+SET(CL_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src)
+SET(COMMON_KERNELS_CPP ${CMAKE_CURRENT_BINARY_DIR}/../common/src/CommonTorchKernelSources.cpp)
+SET(SOURCE_FILES ${SOURCE_FILES} ${COMMON_KERNELS_CPP})
+INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_BINARY_DIR}/src)
+SET_SOURCE_FILES_PROPERTIES(${COMMON_KERNELS_CPP} PROPERTIES GENERATED TRUE)
+
+# Create the library
+
+INCLUDE_DIRECTORIES(${HIP_INCLUDE_DIR})
+ADD_LIBRARY(${SHARED_TARGET} SHARED ${SOURCE_FILES} ${SOURCE_INCLUDE_FILES} ${API_INCLUDE_FILES})
+ADD_DEPENDENCIES(${SHARED_TARGET} CommonKernels)
+
+TARGET_LINK_LIBRARIES(${SHARED_TARGET} ${HIP_LIBRARIES})
+TARGET_LINK_LIBRARIES(${SHARED_TARGET} OpenMM)
+TARGET_LINK_LIBRARIES(${SHARED_TARGET} OpenMMHIP)
+TARGET_LINK_LIBRARIES(${SHARED_TARGET} ${SHARED_NN_TARGET})
+SET_TARGET_PROPERTIES(${SHARED_TARGET} PROPERTIES
+    COMPILE_FLAGS "-DOPENMM_BUILDING_SHARED_LIBRARY ${EXTRA_COMPILE_FLAGS}"
+    LINK_FLAGS "${EXTRA_COMPILE_FLAGS}")
+
+INSTALL(TARGETS ${SHARED_TARGET} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/plugins)
+
+SUBDIRS (tests)
+

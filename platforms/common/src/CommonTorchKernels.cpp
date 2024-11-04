@@ -55,6 +55,10 @@ void CommonCalcTorchForceKernel::initialize(const System& system, const TorchFor
 
     // Inititalize Common objects.
 
+    if (torch::cuda::is_available()) {
+        const torch::Device device(torch::kCUDA, 0); // This implicitly initializes PyTorch
+        this->module.to(device);
+    }
     this->module.eval();
     this->module = torch::jit::freeze(this->module);
     map<string, string> defines;
@@ -69,9 +73,10 @@ void CommonCalcTorchForceKernel::initialize(const System& system, const TorchFor
     ComputeProgram program = cc.compileProgram(CommonTorchKernelSources::torchForce, defines);
     addForcesKernel = program->createKernel("addForces");
     addForcesKernel->addArg(networkForces);
-    addForcesKernel->addArg(cc.getForceBuffers());
+    addForcesKernel->addArg(cc.getLongForceBuffer());
     addForcesKernel->addArg(cc.getAtomIndexArray());
     addForcesKernel->addArg(numParticles);
+    addForcesKernel->addArg();
     addForcesKernel->addArg();
 }
 
@@ -127,7 +132,8 @@ double CommonCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
             float* data = forceTensor.data_ptr<float>();
             networkForces.upload(data);
         }
-        addForcesKernel->setArg(4, outputsForces ? 1 : -1);
+        addForcesKernel->setArg(4, cc.getPaddedNumAtoms());
+        addForcesKernel->setArg(5, outputsForces ? 1 : -1);
         addForcesKernel->execute(numParticles);
     }
     map<string, double>& energyParamDerivs = cc.getEnergyParamDerivWorkspace();
