@@ -8,8 +8,8 @@
 # depending on the version provided by the CI
 
 OSX_SDK_DIR="$(xcode-select -p)/Platforms/MacOSX.platform/Developer/SDKs"
-export MACOSX_DEPLOYMENT_TARGET=10.9
-export MACOSX_SDK_VERSION=10.9
+export MACOSX_DEPLOYMENT_TARGET=10.13
+export MACOSX_SDK_VERSION=10.13
 
 export CMAKE_OSX_SYSROOT="${OSX_SDK_DIR}/MacOSX${MACOSX_SDK_VERSION}.sdk"
 

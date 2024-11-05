@@ -1,5 +1,5 @@
-#ifndef OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_
-#define OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_
+#ifndef OPENMM_HIP_TORCH_KERNEL_FACTORY_H_
+#define OPENMM_HIP_TORCH_KERNEL_FACTORY_H_
 
 /* -------------------------------------------------------------------------- *
  *                                   OpenMM                                   *
@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2024 Stanford University and the Authors.           *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -32,21 +32,19 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include <string>
+#include "openmm/KernelFactory.h"
 
 namespace TorchPlugin {
 
 /**
- * This class is a central holding place for the source code of OpenCL kernels.
- * The CMake build script inserts declarations into it based on the .cl files in the
- * kernels subfolder.
+ * This KernelFactory creates kernels for the HIP implementation of the Torch plugin.
  */
 
-class OpenCLTorchKernelSources {
+class HipTorchKernelFactory : public OpenMM::KernelFactory {
 public:
-@CL_FILE_DECLARATIONS@
+    OpenMM::KernelImpl* createKernelImpl(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& context) const;
 };
 
-} // namespace NNePlugin
+} // namespace TorchPlugin
 
-#endif /*OPENMM_OPENCL_TORCH_KERNEL_SOURCES_H_*/
+#endif /*OPENMM_HIP_TORCH_KERNEL_FACTORY_H_*/

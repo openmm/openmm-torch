@@ -1,8 +1,8 @@
-FILE(GLOB OPENCL_KERNELS ${CL_SOURCE_DIR}/kernels/*.cl)
-SET(CL_FILE_DECLARATIONS)
-SET(CL_FILE_DEFINITIONS)
-CONFIGURE_FILE(${CL_SOURCE_DIR}/${CL_SOURCE_CLASS}.cpp.in ${CL_KERNELS_CPP})
-FOREACH(file ${OPENCL_KERNELS})
+FILE(GLOB COMMON_KERNELS ${KERNEL_SOURCE_DIR}/kernels/*.cc)
+SET(FILE_DECLARATIONS)
+SET(FILE_DEFINITIONS)
+CONFIGURE_FILE(${KERNEL_SOURCE_DIR}/${KERNEL_SOURCE_CLASS}.cpp.in ${KERNELS_CPP})
+FOREACH(file ${COMMON_KERNELS})
     # Load the file contents and process it.
     FILE(STRINGS ${file} file_content NEWLINE_CONSUME)
     # Replace all backslashes by double backslashes as they are being put in a C string.
@@ -15,13 +15,13 @@ FOREACH(file ${OPENCL_KERNELS})
     STRING(REPLACE "\n" "\\n\"\n\"" file_content "${file_content}")
 
     # Determine a name for the variable that will contain this file's contents
-    FILE(RELATIVE_PATH filename ${CL_SOURCE_DIR}/kernels ${file})
+    FILE(RELATIVE_PATH filename ${KERNEL_SOURCE_DIR}/kernels ${file})
     STRING(LENGTH ${filename} filename_length)
     MATH(EXPR filename_length ${filename_length}-3)
     STRING(SUBSTRING ${filename} 0 ${filename_length} variable_name)
 
     # Record the variable declaration and definition.
-    SET(CL_FILE_DECLARATIONS ${CL_FILE_DECLARATIONS}static\ const\ std::string\ ${variable_name};\n)
-    FILE(APPEND ${CL_KERNELS_CPP} const\ string\ ${CL_SOURCE_CLASS}::${variable_name}\ =\ \"${file_content}\"\;\n)
+    SET(FILE_DECLARATIONS ${FILE_DECLARATIONS}static\ const\ std::string\ ${variable_name};\n)
+    FILE(APPEND ${KERNELS_CPP} const\ string\ ${KERNEL_SOURCE_CLASS}::${variable_name}\ =\ \"${file_content}\"\;\n)
 ENDFOREACH(file)
-CONFIGURE_FILE(${CL_SOURCE_DIR}/${CL_SOURCE_CLASS}.h.in ${CL_KERNELS_H})
+CONFIGURE_FILE(${KERNEL_SOURCE_DIR}/${KERNEL_SOURCE_CLASS}.h.in ${KERNELS_H})
