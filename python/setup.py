@@ -30,5 +30,5 @@ setup(name='openmmtorch',
       version='1.0',
       py_modules=['openmmtorch'],
       ext_modules=[extension],
-      install_requires=['openmm >= 8.2', 'torch']
+      install_requires=['openmm', 'torch']
      )
