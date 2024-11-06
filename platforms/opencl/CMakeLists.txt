@@ -61,10 +61,6 @@ SET_TARGET_PROPERTIES(${SHARED_TARGET} PROPERTIES
     LINK_FLAGS "${EXTRA_COMPILE_FLAGS}")
 
 INSTALL(TARGETS ${SHARED_TARGET} DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/plugins)
-# Ensure that links to the main library will be resolved.
-IF (APPLE)
-    INSTALL(CODE "EXECUTE_PROCESS(COMMAND install_name_tool -add_rpath @loader_path/.. ${CMAKE_INSTALL_PREFIX}/lib/plugins/lib${SHARED_TARGET}.dylib)")
-ENDIF (APPLE)
 
 SUBDIRS (tests)
 

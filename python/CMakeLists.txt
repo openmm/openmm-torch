@@ -12,7 +12,7 @@ add_custom_command(
         -python -c++
         -o "${WRAP_FILE}"
         "-I${OPENMM_DIR}/include"
-	${torchincs}
+        ${torchincs}
         "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
     DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/openmmtorch.i"
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
