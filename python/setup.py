@@ -2,6 +2,7 @@ from setuptools import setup, Extension
 import os
 import platform
 
+version = '1.5'
 openmm_dir = '@OPENMM_DIR@'
 torch_include_dirs = '@TORCH_INCLUDE_DIRS@'.split(';')
 nn_plugin_header_dir = '@NN_PLUGIN_HEADER_DIR@'
@@ -27,7 +28,7 @@ extension = Extension(name='_openmmtorch',
                      )
 
 setup(name='openmmtorch',
-      version='1.0',
+      version=version,
       py_modules=['openmmtorch'],
       ext_modules=[extension],
       install_requires=['openmm', 'torch']
