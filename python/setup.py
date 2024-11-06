@@ -2,7 +2,7 @@ from setuptools import setup, Extension
 import os
 import platform
 
-version = '1.5'
+version = '@OPENMM_TORCH_VERSION@'
 openmm_dir = '@OPENMM_DIR@'
 torch_include_dirs = '@TORCH_INCLUDE_DIRS@'.split(';')
 nn_plugin_header_dir = '@NN_PLUGIN_HEADER_DIR@'
