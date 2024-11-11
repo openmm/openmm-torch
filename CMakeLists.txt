@@ -20,7 +20,7 @@ SET (CMAKE_CXX_STANDARD 17)
 # Set flags for linking on mac
 IF(APPLE)
     SET (CMAKE_INSTALL_NAME_DIR "@rpath")
-    SET(EXTRA_COMPILE_FLAGS "-msse2 -stdlib=libc++")
+    SET(EXTRA_COMPILE_FLAGS "-stdlib=libc++")
 ENDIF(APPLE)
 
 # Select where to install
