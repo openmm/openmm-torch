@@ -3,7 +3,7 @@
 #----------------------------------------------------
 
 # The version number is set here and copied to anywhere it is needed.
-SET(OPENMM_TORCH_VERSION 1.5 CACHE STRING "Rhe version of OpenMM-Torch that will be built." FORCE)
+SET(OPENMM_TORCH_VERSION 1.5 CACHE STRING "The version of OpenMM-Torch that will be built." FORCE)
 
 CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 
