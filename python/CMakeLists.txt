@@ -1,7 +1,5 @@
 set(WRAP_FILE TorchPluginWrapper.cpp)
 set(MODULE_NAME openmmtorch)
-# Specify the C++ version we are building for.
-SET (CMAKE_CXX_STANDARD 17)
 
 # Execute SWIG to generate source code for the Python module.
 foreach(dir ${TORCH_INCLUDE_DIRS})
