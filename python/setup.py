@@ -17,7 +17,11 @@ runtime_library_dirs = [os.path.join(openmm_dir, 'lib'), torch_dir]
 # For Windows change the compiler flag to /std:c++17
 if platform.system() == 'Windows':
     extra_compile_args = ['/std:c++17']
-    libraries += ['c10', 'torch', 'torch_cpu', 'torch_cuda']
+    libraries += ['c10', 'torch']
+    if os.environ.get("CUDA_HOME", None) is not None:
+        libraries += ['torch_cuda']
+    else:
+        libraries += ['torch_cpu']
     runtime_library_dirs = None
 
 # setup extra compile and link arguments on Mac
