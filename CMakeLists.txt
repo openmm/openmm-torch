@@ -10,11 +10,7 @@ CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
 # We need to know where OpenMM is installed so we can access the headers and libraries.
 SET(OPENMM_DIR "/usr/local/openmm" CACHE PATH "Where OpenMM is installed")
 INCLUDE_DIRECTORIES("${OPENMM_DIR}/include")
-IF(WIN32)
-    LINK_DIRECTORIES("${OPENMM_DIR}/Library/lib" "${OPENMM_DIR}/Library/lib/plugins")
-ELSE(WIN32)
-    LINK_DIRECTORIES("${OPENMM_DIR}/lib" "${OPENMM_DIR}/lib/plugins")
-ENDIF(WIN32)
+LINK_DIRECTORIES("${OPENMM_DIR}/lib" "${OPENMM_DIR}/lib/plugins")
 
 # We need to know where LibTorch is installed so we can access the headers and libraries.
 SET(PYTORCH_DIR "" CACHE PATH "Where the PyTorch C++ API is installed")
