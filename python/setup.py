@@ -11,10 +11,14 @@ torch_dir, _ = os.path.split('@TORCH_LIBRARY@')
 
 extra_compile_args = ['-std=c++17']
 extra_link_args = []
+libraries = ['OpenMM', 'OpenMMTorch']
+runtime_library_dirs = [os.path.join(openmm_dir, 'lib'), torch_dir]
 
 # For Windows change the compiler flag to /std:c++17
 if platform.system() == 'Windows':
     extra_compile_args = ['/std:c++17']
+    libraries += ['c10', 'torch', 'torch_cpu', 'torch_cuda']
+    runtime_library_dirs = None
 
 # setup extra compile and link arguments on Mac
 if platform.system() == 'Darwin':
@@ -23,10 +27,10 @@ if platform.system() == 'Darwin':
 
 extension = Extension(name='_openmmtorch',
                       sources=['TorchPluginWrapper.cpp'],
-                      libraries=['OpenMM', 'OpenMMTorch'],
+                      libraries=libraries,
                       include_dirs=[os.path.join(openmm_dir, 'include'), nn_plugin_header_dir] + torch_include_dirs,
-                      library_dirs=[os.path.join(openmm_dir, 'lib'), nn_plugin_library_dir],
-                      runtime_library_dirs=[os.path.join(openmm_dir, 'lib'), torch_dir],
+                      library_dirs=[os.path.join(openmm_dir, 'lib'), nn_plugin_library_dir, torch_dir],
+                      runtime_library_dirs=runtime_library_dirs,
                       extra_compile_args=extra_compile_args,
                       extra_link_args=extra_link_args
                      )
