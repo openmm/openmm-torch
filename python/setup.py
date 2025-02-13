@@ -9,10 +9,14 @@ nn_plugin_header_dir = '@NN_PLUGIN_HEADER_DIR@'
 nn_plugin_library_dir = '@NN_PLUGIN_LIBRARY_DIR@'
 torch_dir, _ = os.path.split('@TORCH_LIBRARY@')
 
-# setup extra compile and link arguments on Mac
 extra_compile_args = ['-std=c++17']
 extra_link_args = []
 
+# For Windows change the compiler flag to /std:c++17
+if platform.system() == 'Windows':
+    extra_compile_args = ['/std:c++17']
+
+# setup extra compile and link arguments on Mac
 if platform.system() == 'Darwin':
     extra_compile_args += ['-stdlib=libc++', '-mmacosx-version-min=10.13']
     extra_link_args += ['-stdlib=libc++', '-mmacosx-version-min=10.13']
