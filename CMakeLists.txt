@@ -26,6 +26,11 @@ IF(APPLE)
     SET(EXTRA_COMPILE_FLAGS "-stdlib=libc++")
 ENDIF(APPLE)
 
+# Set flags for fixing pytorch build issues on Windows
+IF(WIN32)
+    SET(EXTRA_COMPILE_FLAGS "-DNOMINMAX")
+ENDIF(WIN32)
+
 # Select where to install
 IF(${CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT})
     IF(WIN32)
