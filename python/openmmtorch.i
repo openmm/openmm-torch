@@ -7,8 +7,7 @@ if sys.platform == 'win32':
     openmmtorch_library_path = openmm.version.openmm_library_path
 
     _path = os.environ['PATH']
-    os.environ['PATH'] = '%(lib)s;%(lib)s\plugins;%(path)s' % {
-        'lib': openmmtorch_library_path, 'path': _path}
+    os.environ['PATH'] = r'%(lib)s;%(lib)s\plugins;%(path)s' % {'lib': openmmtorch_library_path, 'path': _path}
 
     os.add_dll_directory(openmmtorch_library_path)
 
