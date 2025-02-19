@@ -27,7 +27,7 @@ jobs:
           environment-file: devtools/conda-envs/test-tutorials.yml
           miniforge-variant: Miniforge3
           use-mamba: true
-          python-version: 3.10 # Mimics Google Colab
+          python-version: "3.10" # Mimics Google Colab
 
       - name: "List conda packages"
         run: conda list
