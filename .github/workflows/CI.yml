@@ -60,27 +60,7 @@ jobs:
 
       - name: Manage disk space
         if: startsWith(matrix.os, 'ubuntu')
-        run: |
-          sudo mkdir -p /opt/empty_dir || true
-          for d in \
-                   /opt/ghc \
-                   /opt/hostedtoolcache \
-                   /usr/lib/jvm \
-                   /usr/local/.ghcup \
-                   /usr/local/lib/android \
-                   /usr/local/share/powershell \
-                   /usr/share/dotnet \
-                   /usr/share/swift \
-                   ; do
-            sudo rsync --stats -a --delete /opt/empty_dir/ $d || true
-          done
-          sudo apt-get purge -y -f firefox \
-                                   google-chrome-stable \
-                                   microsoft-edge-stable
-          sudo apt-get autoremove -y >& /dev/null
-          sudo apt-get autoclean -y >& /dev/null
-          sudo docker image prune --all --force
-          df -h
+        uses: jlumbroso/free-disk-space@main
 
       - name: "Install SDK on MacOS (if needed)"
         run: source devtools/scripts/install_macos_sdk.sh
@@ -103,7 +83,8 @@ jobs:
         with:
           activate-environment: build
           environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
-          miniforge-variant: Mambaforge
+          miniforge-variant: Miniforge3
+          use-mamba: true
           python-version: ${{ matrix.python-version }}
         env:
           # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
