@@ -111,7 +111,7 @@ void* TorchForceProxy::deserialize(const SerializationNode& node) const {
     } else {
         const string storedEncodedFile = node.getStringProperty("encodedFileContents");
         string fileName = tmpnam(nullptr); // A unique filename
-        ofstream(fileName) << hexDecode(storedEncodedFile);
+        ofstream(fileName) << hexDecode(storedEncodedFile) << std::flush;
         auto model = torch::jit::load(fileName);
         std::remove(fileName.c_str());
         force = new TorchForce(model);
