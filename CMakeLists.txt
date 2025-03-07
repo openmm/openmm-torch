@@ -15,7 +15,6 @@ LINK_DIRECTORIES("${OPENMM_DIR}/lib" "${OPENMM_DIR}/lib/plugins")
 # We need to know where LibTorch is installed so we can access the headers and libraries.
 SET(PYTORCH_DIR "" CACHE PATH "Where the PyTorch C++ API is installed")
 SET(CMAKE_PREFIX_PATH "${PYTORCH_DIR}")
-FIND_PACKAGE(Torch REQUIRED)
 
 # Specify the C++ version we are building for.
 SET (CMAKE_CXX_STANDARD 17)
@@ -84,6 +83,28 @@ FOREACH(subdir ${NN_PLUGIN_SOURCE_SUBDIRS})
     INCLUDE_DIRECTORIES(BEFORE ${CMAKE_CURRENT_SOURCE_DIR}/${subdir}/include)
 ENDFOREACH(subdir)
 
+# The following is taken from https://discuss.pytorch.org/t/failed-to-find-nvtoolsext/179635.
+# CUDA 12 changed nvToolsExt from a library to just a header.  This broke compiling against
+# libtorch.  Almost two years later, they still haven't fixed it.  This is a workaround.
+
+FIND_PACKAGE(CUDAToolkit QUIET)
+if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL 12)
+    message(STATUS "PyTorch NVTX headers workaround: Yes")
+    # only do this if nvToolsExt is not defined and CUDA::nvtx3 exists
+    if(NOT TARGET CUDA::nvToolsExt AND TARGET CUDA::nvtx3)
+        add_library(CUDA::nvToolsExt INTERFACE IMPORTED)
+        # ensure that PyTorch is told to use NVTX3 headers
+        target_compile_definitions(
+            CUDA::nvToolsExt INTERFACE
+            TORCH_CUDA_USE_NVTX3
+        )
+        target_link_libraries(CUDA::nvToolsExt INTERFACE CUDA::nvtx3)
+    endif()
+else()
+    message(STATUS "PyTorch NVTX headers workaround: No")
+endif()
+FIND_PACKAGE(Torch REQUIRED)
+
 # Create the library.
 
 ADD_LIBRARY(${SHARED_NN_TARGET} SHARED ${SOURCE_FILES} ${SOURCE_INCLUDE_FILES} ${API_INCLUDE_FILES})
@@ -139,12 +160,11 @@ IF(NN_BUILD_OPENCL_LIB)
     ADD_SUBDIRECTORY(platforms/opencl)
 ENDIF(NN_BUILD_OPENCL_LIB)
 
-FIND_PACKAGE(CUDA QUIET)
-IF(CUDA_FOUND)
+IF(CUDAToolkit_FOUND)
     SET(NN_BUILD_CUDA_LIB ON CACHE BOOL "Build implementation for CUDA")
-ELSE(CUDA_FOUND)
+ELSE(CUDAToolkit_FOUND)
     SET(NN_BUILD_CUDA_LIB OFF CACHE BOOL "Build implementation for CUDA")
-ENDIF(CUDA_FOUND)
+ENDIF(CUDAToolkit_FOUND)
 IF(NN_BUILD_CUDA_LIB)
     ADD_SUBDIRECTORY(platforms/cuda)
 ENDIF(NN_BUILD_CUDA_LIB)
