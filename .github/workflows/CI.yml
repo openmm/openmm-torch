@@ -140,3 +140,96 @@ jobs:
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
           pytest --verbose Test*
+
+
+  windows:
+    runs-on: ${{ matrix.os }}
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows (CUDA 12.5, Python 3.12, PyTorch 2.5)
+            os: windows-latest
+            cuda-version: "12.5.0"
+            nvcc-version: "12.5"
+            python-version: "3.12"
+            pytorch-version: "2.5.*"
+
+    steps:
+      - name: "Check out"
+        uses: actions/checkout@v2
+
+      - name: "Install CUDA Toolkit"
+        uses: Jimver/cuda-toolkit@v0.2.16
+        id: cuda-toolkit
+        with:
+          cuda: ${{ matrix.cuda-version }}
+          method: 'network'
+          sub-packages: '["nvcc", "nvrtc", "nvrtc_dev", "cufft", "cufft_dev", "opencl", "cudart", "cuda_profiler_api"]'
+
+      - name: "Update the conda enviroment file"
+        uses: cschleiden/replace-tokens@v1
+        with:
+          tokenPrefix: '@'
+          tokenSuffix: '@'
+          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+        env:
+          PYTORCH_VERSION: ${{ matrix.pytorch-version }}
+
+      - uses: conda-incubator/setup-miniconda@v2
+        name: "Install dependencies with Mamba"
+        with:
+          activate-environment: build
+          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          miniforge-variant: Miniforge3
+          use-mamba: true
+          python-version: ${{ matrix.python-version }}
+        env:
+          # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
+          CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
+
+      - name: "List conda packages"
+        shell: cmd /C call {0}
+        run: conda list
+
+      - name: "Configure"
+        shell: cmd /C call {0}
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          mkdir build
+          cd build
+          for /f "usebackq delims==" %%v in (`python -c "import site; print(site.getsitepackages()[-1])"`) do set SITE_PACKAGES=%%v
+          cmake -G "NMake Makefiles JOM" ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX% ^
+            -DOPENMM_DIR=%CONDA_PREFIX% ^
+            -DTorch_DIR=%SITE_PACKAGES%/torch/share/cmake/Torch ^
+            -DNN_BUILD_OPENCL_LIB=ON ^
+            -DOPENCL_INCLUDE_DIR="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/include" ^
+            -DOPENCL_LIBRARY="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/lib/x64/OpenCL.lib" ^
+
+      - name: "Build"
+        shell: cmd /C call {0}
+        run: |
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          cd build
+          jom -j 4 install
+          jom -j 4 PythonInstall
+
+      - name: "List plugins"
+        shell: cmd /C call {0}
+        run: |
+          python -c "import openmm as mm; print('---Loaded---', *mm.pluginLoadedLibNames, '---Failed---', *mm.Platform.getPluginLoadFailures(), sep='\n')"
+
+      - name: "Run C++ test"
+        shell: cmd /C call {0}
+        run: |
+          cd build
+          ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
+
+      - name: "Run Python test"
+        shell: cmd /C call {0}
+        run: |
+          cd python/tests
+          pytest --verbose Test*

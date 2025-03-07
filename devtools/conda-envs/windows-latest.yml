@@ -1,0 +1,16 @@
+name: build
+channels:
+- conda-forge
+dependencies:
+- jom
+- cmake
+- ccache
+- m2-coreutils
+- python
+- cython
+- swig
+- openmm >=8.2
+- nnpops
+- pytorch-gpu @PYTORCH_VERSION@
+- torchani
+- pytest
