@@ -200,14 +200,14 @@ jobs:
           mkdir build
           cd build
           for /f "usebackq delims==" %%v in (`python -c "import site; print(site.getsitepackages()[-1])"`) do set SITE_PACKAGES=%%v
-          cmake -G "NMake Makefiles JOM" ^
+          cmake .. -G "NMake Makefiles JOM" ^
             -DCMAKE_BUILD_TYPE=Release ^
             -DCMAKE_INSTALL_PREFIX=%CONDA_PREFIX% ^
             -DOPENMM_DIR=%CONDA_PREFIX% ^
             -DTorch_DIR=%SITE_PACKAGES%/torch/share/cmake/Torch ^
             -DNN_BUILD_OPENCL_LIB=ON ^
             -DOPENCL_INCLUDE_DIR="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/include" ^
-            -DOPENCL_LIBRARY="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/lib/x64/OpenCL.lib" ^
+            -DOPENCL_LIBRARY="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/lib/x64/OpenCL.lib"
 
       - name: "Build"
         shell: cmd /C call {0}
