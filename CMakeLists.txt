@@ -105,7 +105,8 @@ if(
     endif()
 else()
     message(STATUS "PyTorch NVTX headers workaround: No")
-endif()FIND_PACKAGE(Torch REQUIRED)
+endif()
+FIND_PACKAGE(Torch REQUIRED)
 
 # Create the library.
 
