@@ -88,10 +88,7 @@ ENDFOREACH(subdir)
 # libtorch.  Almost two years later, they still haven't fixed it.  This is a workaround.
 
 FIND_PACKAGE(CUDAToolkit QUIET)
-if(
-    PYTORCH_VERSION VERSION_GREATER_EQUAL 2.5.0 AND
-    PYTORCH_CUDA_VERSION VERSION_GREATER_EQUAL 12
-)
+if(CUDAToolkit_VERSION VERSION_GREATER_EQUAL 12)
     message(STATUS "PyTorch NVTX headers workaround: Yes")
     # only do this if nvToolsExt is not defined and CUDA::nvtx3 exists
     if(NOT TARGET CUDA::nvToolsExt AND TARGET CUDA::nvtx3)
