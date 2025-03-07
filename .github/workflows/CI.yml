@@ -197,6 +197,7 @@ jobs:
         shell: cmd /C call {0}
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
+          dir C:\Miniconda3\envs\build\lib
           mkdir build
           cd build
           for /f "usebackq delims==" %%v in (`python -c "import site; print(site.getsitepackages()[-1])"`) do set SITE_PACKAGES=%%v
