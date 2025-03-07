@@ -10,7 +10,6 @@ dependencies:
 - cython
 - swig
 - openmm >=8.2
-- nnpops
 - pytorch-gpu @PYTORCH_VERSION@
 - torchani
 - pytest
