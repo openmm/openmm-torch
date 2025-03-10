@@ -27,43 +27,8 @@ If you don't have `conda` available, we recommend installing [Miniconda for Pyth
 Building from source
 --------------------
 
-This plugin uses [CMake](https://cmake.org/) as its build system.  
-Before compiling you must install [LibTorch](https://pytorch.org/cppdocs/installing.html), which is the PyTorch C++ API, by following the instructions at https://pytorch.org.
-You can then follow these steps:
+If you need to build from source look at [INSTALL.md](./INSTALL.md).
 
-1. Create a directory in which to build the plugin.
-
-2. Run the CMake GUI or `ccmake`, specifying your new directory as the build directory and the top
-level directory of this project as the source directory.
-
-3. Press "Configure".  (Do not worry if it produces an error message about not being able to find PyTorch.)
-
-4. Set `OPENMM_DIR` to point to the directory where OpenMM is installed.  This is needed to locate
-the OpenMM header files and libraries.  If you are unsure of what directory this is, the following
-script will print it out.
-
-```python
-from simtk import openmm
-import os
-print(os.path.dirname(openmm.version.openmm_library_path))
-```
-
-5. Set `PYTORCH_DIR` to point to the directory where you installed the LibTorch.
-
-6. Set `CMAKE_INSTALL_PREFIX` to the directory where the plugin should be installed.  Usually,
-this will be the same as `OPENMM_DIR`, so the plugin will be added to your OpenMM installation.
-
-7. If you plan to build the OpenCL platform, make sure that `OPENCL_INCLUDE_DIR` and
-`OPENCL_LIBRARY` are set correctly, and that `NN_BUILD_OPENCL_LIB` is selected.
-
-8. If you plan to build the CUDA platform, make sure that `CUDA_TOOLKIT_ROOT_DIR` is set correctly
-and that `NN_BUILD_CUDA_LIB` is selected.
-
-9. Press "Configure" again if necessary, then press "Generate".
-
-10. Use the build system you selected to build and install the plugin.  For example, if you
-selected Unix Makefiles, type `make install` to install the plugin, and `make PythonInstall` to
-install the Python wrapper.
 
 Using the OpenMM PyTorch plugin
 ===============================

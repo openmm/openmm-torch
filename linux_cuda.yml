@@ -1,0 +1,19 @@
+name: build
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - cudatoolkit
+  - gxx_linux-64
+  - make
+  - nnpops
+  - ocl-icd
+  - openmm >=7.7
+  - pip
+  - pocl
+  - pytest
+  - python
+  - pytorch-gpu
+  - swig <4.1
+  - sysroot_linux-64 2.17
+  - torchani
