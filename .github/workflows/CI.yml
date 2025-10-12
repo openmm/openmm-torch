@@ -227,6 +227,8 @@ jobs:
         run: |
           cd build
           set PATH=%PATH%;%CONDA_PREFIX%\lib\python${{ matrix.python-version }}\site-packages\torch\lib
+          set PATH
+          dir %CONDA_PREFIX%\lib\python${{ matrix.python-version }}\site-packages\torch\lib
           ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
 
       - name: "Run Python test"
