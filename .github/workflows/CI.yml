@@ -85,6 +85,8 @@ jobs:
           environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
           python-version: ${{ matrix.python-version }}
           auto-activate-base: false
+          miniforge-variant: Miniforge3
+          use-mamba: true
         env:
           # Override the CUDA detection as the CI hosts don't have NVIDIA drivers
           CONDA_OVERRIDE_CUDA: ${{ matrix.nvcc-version }}
