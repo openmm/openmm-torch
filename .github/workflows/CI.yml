@@ -227,8 +227,9 @@ jobs:
         run: |
           cd build
           for /f "usebackq delims==" %%v in (`python -c "import site; print(site.getsitepackages()[-1])"`) do set SITE_PACKAGES=%%v
-          dir %SITE_PACKAGES%\torch
-          set PATH=%PATH%;%SITE_PACKAGES%\torch\lib
+          dir %SITE_PACKAGES%\torch\lib
+          dir %CONDA_PREFIX%\Library\lib
+          set PATH=%PATH%;%SITE_PACKAGES%\torch\lib;%CONDA_PREFIX%\Library\lib
           set PATH
           ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
 
