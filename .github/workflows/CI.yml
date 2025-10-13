@@ -52,10 +52,11 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Install CUDA Toolkit on Linux (if needed)"
-        uses: Jimver/cuda-toolkit@v0.2.15
+        uses: Jimver/cuda-toolkit@v0.2.24
         with:
           cuda: ${{ matrix.cuda-version }}
           linux-local-args: '["--toolkit", "--override"]'
+          use-github-cache: 'false'
         if: startsWith(matrix.os, 'ubuntu')
 
       - name: Manage disk space
@@ -162,7 +163,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Install CUDA Toolkit"
-        uses: Jimver/cuda-toolkit@v0.2.16
+        uses: Jimver/cuda-toolkit@v0.2.24
         id: cuda-toolkit
         with:
           cuda: ${{ matrix.cuda-version }}
