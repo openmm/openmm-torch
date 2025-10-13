@@ -22,29 +22,29 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.1)
+          - name: Linux (CUDA 12.4, Python 3.13, PyTorch 2.8)
             os: ubuntu-22.04
-            cuda-version: "11.8.0"
+            cuda-version: "12.4"
             gcc-version: "10.3.*"
-            nvcc-version: "11.8"
-            python-version: "3.10"
-            pytorch-version: "2.1.*"
+            nvcc-version: "12.4"
+            python-version: "3.13"
+            pytorch-version: "2.8.*"
 
-          - name: MacOS ARM (Python 3.11, PyTorch 2.4)
+          - name: MacOS ARM (Python 3.13, PyTorch 2.5)
             os: macos-latest
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
-            python-version: "3.11"
-            pytorch-version: "2.4.*"
+            python-version: "3.13"
+            pytorch-version: "2.5.*"
 
-          - name: MacOS Intel (Python 3.11, PyTorch 2.4)
+          - name: MacOS Intel (Python 3.13, PyTorch 2.5)
             os: macos-13
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
-            python-version: "3.11"
-            pytorch-version: "2.4.*"
+            python-version: "3.13"
+            pytorch-version: "2.5.*"
 
 
     steps:
