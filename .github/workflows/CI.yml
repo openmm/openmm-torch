@@ -24,7 +24,7 @@ jobs:
         include:
           - name: Linux (CUDA 12.4, Python 3.13, PyTorch 2.8)
             os: ubuntu-22.04
-            cuda-version: "12.4"
+            cuda-version: "12.5.0"
             gcc-version: "10.3.*"
             nvcc-version: "12.4"
             python-version: "3.13"
