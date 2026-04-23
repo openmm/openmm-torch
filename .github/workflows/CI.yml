@@ -38,8 +38,8 @@ jobs:
             python-version: "3.11"
             pytorch-version: "2.4.*"
 
-          - name: MacOS Intel (Python 3.11, PyTorch 2.4)
-            os: macos-13
+          - name: MacOS Intel (Python 3.13, PyTorch 2.5)
+            os: macos-15-intel
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
