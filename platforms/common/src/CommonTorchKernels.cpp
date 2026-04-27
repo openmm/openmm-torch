@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2026 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -31,6 +31,8 @@
 
 #include "CommonTorchKernels.h"
 #include "CommonTorchKernelSources.h"
+#include "openmm/common/CommonKernelSources.h"
+#include "openmm/common/ContextSelector.h"
 #include "openmm/internal/ContextImpl.h"
 #include <map>
 
@@ -147,3 +149,145 @@ double CommonCalcTorchForceKernel::execute(ContextImpl& context, bool includeFor
     return energyTensor.item<double>();
 }
 
+class CommonCalcPythonTorchForceKernel::ReorderListener : public ComputeContext::ReorderListener {
+public:
+    ReorderListener(CommonCalcPythonTorchForceKernel& owner) : owner(owner) {
+    }
+    void execute() {
+        owner.sortParticles();
+    }
+private:
+    CommonCalcPythonTorchForceKernel& owner;
+};
+
+void CommonCalcPythonTorchForceKernel::initialize(const ContextImpl& context, const PythonTorchForce& force) {
+    ContextSelector selector(cc);
+    computation = &force.getComputation();
+    usePeriodic = force.usesPeriodicBoundaryConditions();
+    particles = force.getParticles();
+    numParticles = particles.size();
+    if (numParticles == 0)
+        numParticles = context.getSystem().getNumParticles();
+    positionsVec.resize(numParticles);
+    int elementSize = (cc.getUseDoublePrecision() ? sizeof(double) : sizeof(float));
+    positionsArray.initialize(cc, 3*numParticles, elementSize, "positions");
+    forcesArray.initialize(cc, 3*numParticles, elementSize, "forces");
+    map<string, string> defines;
+    defines["NUM_ATOMS"] = cc.intToString(numParticles);
+    defines["PADDED_NUM_ATOMS"] = cc.intToString(cc.getPaddedNumAtoms());
+    ComputeProgram program = cc.compileProgram(CommonKernelSources::pythonForce, defines);
+    if (particles.size() > 0) {
+        particlesArray.initialize<int>(cc, numParticles, "particles");
+        reorderedParticles.initialize<int>(cc, numParticles, "reorderedParticles");
+        particlesArray.upload(particles);
+        reorderedParticles.upload(particles);
+        cc.addReorderListener(new ReorderListener(*this));
+        copyPositionsKernel = program->createKernel("copyPositions");
+        copyPositionsKernel->addArg(cc.getPosq());
+        copyPositionsKernel->addArg(positionsArray);
+        copyPositionsKernel->addArg(reorderedParticles);
+        copyPositionsKernel->addArg(numParticles);
+        addForcesKernel = program->createKernel("addForcesSubset");
+        addForcesKernel->addArg(forcesArray);
+        addForcesKernel->addArg(cc.getLongForceBuffer());
+        addForcesKernel->addArg(cc.getAtomIndexArray());
+        addForcesKernel->addArg(reorderedParticles);
+        addForcesKernel->addArg(numParticles);
+    }
+    else {
+        addForcesKernel = program->createKernel("addForcesAll");
+        addForcesKernel->addArg(forcesArray);
+        addForcesKernel->addArg(cc.getLongForceBuffer());
+        addForcesKernel->addArg(cc.getAtomIndexArray());
+    }
+}
+
+double CommonCalcPythonTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
+    if (cc.getContextIndex() != 0)
+        return 0.0;
+    torch::Tensor posTensor = getPositions();
+    State::StateBuilder builder(contextImpl.getTime(), contextImpl.getStepCount());
+    builder.setParameters(contextImpl.getParameters());
+    if (usePeriodic) {
+        Vec3 a, b, c;
+        contextImpl.getPeriodicBoxVectors(a, b, c);
+        builder.setPeriodicBoxVectors(a, b, c);
+    }
+    State state = builder.getState();
+    torch::Tensor forceTensor = computation->compute(state, posTensor, energy);
+    if (includeForces)
+        addForces(forceTensor);
+    return includeEnergy ? energy : 0.0;
+}
+
+torch::Tensor CommonCalcPythonTorchForceKernel::getPositions() {
+    // If the NonbondedUtilities uses periodic boundary conditions, the positions might have been
+    // wrapped to the periodic box.  If this force also applies periodic boundary conditions, that's
+    // alright.  Otherwise, we need to move them back.
+
+    bool fixPeriodic = usePeriodic || !cc.getNonbondedUtilities().getUsePeriodic();
+    if (particles.size() == 0) {
+        // The force applies to the whole system, so we can just use the standard getPositions().
+
+        contextImpl.getPositions(positionsVec, fixPeriodic);
+    }
+    else {
+        // Retrieve positions for the subset of particles the force is applied to.
+
+        ContextSelector selector(cc);
+        copyPositionsKernel->execute(numParticles);
+        if (cc.getUseDoublePrecision()) {
+            vector<double> pos(3*numParticles);
+            positionsArray.download(pos);
+            for (int i = 0; i < numParticles; i++)
+                positionsVec[i] = Vec3(pos[3*i], pos[3*i+1], pos[3*i+2]);
+        }
+        else {
+            vector<float> pos(3*numParticles);
+            positionsArray.download(pos);
+            for (int i = 0; i < numParticles; i++)
+                positionsVec[i] = Vec3((double) pos[3*i], (double) pos[3*i+1], (double) pos[3*i+2]);
+        }
+        if (fixPeriodic) {
+            Vec3 boxVectors[3];
+            cc.getPeriodicBoxVectors(boxVectors[0], boxVectors[1], boxVectors[2]);
+            for (int i = 0; i < numParticles; ++i) {
+                mm_int4 offset = cc.getPosCellOffsets()[particles[i]];
+                positionsVec[i] -= boxVectors[0]*offset.x-boxVectors[1]*offset.y-boxVectors[2]*offset.z;
+            }
+        }
+    }
+    return torch::from_blob(positionsVec.data(), {numParticles, 3}, torch::TensorOptions().dtype(torch::kFloat64).requires_grad(true));
+}
+
+void CommonCalcPythonTorchForceKernel::sortParticles() {
+    // Update the list of particles to account for reordering.
+
+    const vector<int>& order = cc.getAtomIndex();
+    vector<int> inverseOrder(order.size());
+    for (int i = 0; i < cc.getNumAtoms(); i++)
+        inverseOrder[order[i]] = i;
+    vector<int> reordered(particles.size());
+    for (int i = 0; i < particles.size(); i++)
+        reordered[i] = inverseOrder[particles[i]];
+    reorderedParticles.upload(reordered);
+}
+
+void CommonCalcPythonTorchForceKernel::addForces(torch::Tensor forceTensor) {
+    // Add in the forces.
+
+    ContextSelector selector(cc);
+    if (cc.getUseDoublePrecision()) {
+        if (!(forceTensor.dtype() == torch::kFloat64))
+            forceTensor = forceTensor.to(torch::kFloat64);
+        double* data = forceTensor.data_ptr<double>();
+        forcesArray.upload(data);
+    }
+    else {
+        if (!(forceTensor.dtype() == torch::kFloat32))
+            forceTensor = forceTensor.to(torch::kFloat32);
+        float* data = forceTensor.data_ptr<float>();
+        forcesArray.upload(data);
+    }
+    addForcesKernel->execute(cc.getNumAtoms());
+}

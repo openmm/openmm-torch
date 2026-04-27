@@ -146,9 +146,7 @@ public:
 
 }
 
-
 %inline %{
-
 
 namespace TorchPlugin {
     /**
@@ -173,6 +171,8 @@ namespace TorchPlugin {
             PyObject* wrappedState = SWIG_NewPointerObj((void*) &state, info, 0);
             PyObject* wrappedPositions = THPVariable_Wrap(positions);
             PyObject* result = PyObject_CallFunctionObjArgs(computation, wrappedState, wrappedPositions, NULL);
+            Py_XDECREF(wrappedState);
+            Py_XDECREF(wrappedPositions);
             if (result == NULL) {
                 // The function raised an exception.  Convert it to an OpenMMException.
 
@@ -213,8 +213,6 @@ namespace TorchPlugin {
 
             // Clean up before returning.
 
-            Py_XDECREF(wrappedState);
-            Py_XDECREF(wrappedPositions);
             Py_XDECREF(result);
             Py_XDECREF(pyenergy);
             Py_XDECREF(pyforces);

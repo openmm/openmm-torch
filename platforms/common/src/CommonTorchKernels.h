@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2026 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -74,6 +74,54 @@ private:
     bool usePeriodic, outputsForces;
     OpenMM::ComputeArray networkForces;
     OpenMM::ComputeKernel addForcesKernel;
+};
+
+/**
+ * This kernel is invoked by PythonTorchForce to calculate the forces acting on the system and the energy of the system.
+ */
+class CommonCalcPythonTorchForceKernel : public CalcPythonTorchForceKernel {
+public:
+    CommonCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& contextImpl, OpenMM::ComputeContext& cc) :
+            CalcPythonTorchForceKernel(name, platform), contextImpl(contextImpl), cc(cc) {
+    }
+    /**
+     * Initialize the kernel.
+     *
+     * @param context    the ContextImpl this kernel will be applied to
+     * @param force      the PythonTorchForce this kernel will be used for
+     */
+    void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force);
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+    /**
+     * Retrieve the current positions as a Tensor.  Subclasses can override this to do it
+     * more efficiently.
+     */
+    virtual torch::Tensor getPositions();
+    /**
+     * Add in the forces.  Subclasses can override this to do it more efficiently.
+     */
+    virtual void addForces(torch::Tensor forceTensor);
+private:
+    class ReorderListener;
+    void sortParticles();
+    OpenMM::ContextImpl& contextImpl;
+    OpenMM::ComputeContext& cc;
+    const PythonTorchForceComputation* computation;
+    OpenMM::ComputeArray positionsArray, forcesArray, particlesArray, reorderedParticles;
+    OpenMM::ComputeKernel copyPositionsKernel, addForcesKernel;
+    std::vector<OpenMM::Vec3> positionsVec;
+    std::vector<int> particles;
+    int numParticles;
+    double energy;
+    bool usePeriodic, useWorkerThread;
 };
 
 } // namespace TorchPlugin
