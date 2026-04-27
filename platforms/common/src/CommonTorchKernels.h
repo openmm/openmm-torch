@@ -117,7 +117,7 @@ private:
     const PythonTorchForceComputation* computation;
     OpenMM::ComputeArray positionsArray, forcesArray, particlesArray, reorderedParticles;
     OpenMM::ComputeKernel copyPositionsKernel, addForcesKernel;
-    std::vector<OpenMM::Vec3> positionsVec;
+    std::vector<double> positionsVec;
     std::vector<int> particles;
     int numParticles;
     double energy;
