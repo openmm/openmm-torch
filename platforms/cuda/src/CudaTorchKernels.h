@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018-2024 Stanford University and the Authors.      *
+ * Portions copyright (c) 2018-2026 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors: Raimondas Galvelis, Raul P. Pelaez                           *
  *                                                                            *
@@ -33,6 +33,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "TorchKernels.h"
+#include "CommonTorchKernels.h"
 #include "openmm/cuda/CudaContext.h"
 #include "openmm/cuda/CudaArray.h"
 #include <torch/version.h>
@@ -84,6 +85,43 @@ private:
     void addForces(torch::Tensor& forceTensor);
     int warmupSteps;
 };
+
+
+/**
+ * This kernel is invoked by PythonTorchForce to calculate the forces acting on the system and the energy of the system.
+ */
+class CudaCalcPythonTorchForceKernel : public CommonCalcPythonTorchForceKernel {
+public:
+    CudaCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& contextImpl, OpenMM::ComputeContext& cc) :
+            CommonCalcPythonTorchForceKernel(name, platform, contextImpl, cc) {
+    }
+    // /**
+    //  * Initialize the kernel.
+    //  *
+    //  * @param context    the ContextImpl this kernel will be applied to
+    //  * @param force      the PythonTorchForce this kernel will be used for
+    //  */
+    // void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force);
+    // /**
+    //  * Execute the kernel to calculate the forces and/or energy.
+    //  *
+    //  * @param context        the context in which to execute this kernel
+    //  * @param includeForces  true if forces should be calculated
+    //  * @param includeEnergy  true if the energy should be calculated
+    //  * @return the potential energy due to the force
+    //  */
+    // double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+    // /**
+    //  * Retrieve the current positions as a Tensor.  Subclasses can override this to do it
+    //  * more efficiently.
+    //  */
+    // virtual torch::Tensor getPositions();
+    // /**
+    //  * Add in the forces.  Subclasses can override this to do it more efficiently.
+    //  */
+    // virtual void addForces(torch::Tensor forceTensor);
+};
+
 
 } // namespace TorchPlugin
 

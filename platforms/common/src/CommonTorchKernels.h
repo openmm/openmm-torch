@@ -109,7 +109,7 @@ public:
      * Add in the forces.  Subclasses can override this to do it more efficiently.
      */
     virtual void addForces(torch::Tensor forceTensor);
-private:
+protected:
     class ReorderListener;
     void sortParticles();
     OpenMM::ContextImpl& contextImpl;

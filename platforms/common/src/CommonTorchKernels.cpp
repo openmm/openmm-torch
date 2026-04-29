@@ -31,7 +31,6 @@
 
 #include "CommonTorchKernels.h"
 #include "CommonTorchKernelSources.h"
-#include "openmm/common/CommonKernelSources.h"
 #include "openmm/common/ContextSelector.h"
 #include "openmm/internal/ContextImpl.h"
 #include <map>
@@ -175,7 +174,7 @@ void CommonCalcPythonTorchForceKernel::initialize(const ContextImpl& context, co
     map<string, string> defines;
     defines["NUM_ATOMS"] = cc.intToString(numParticles);
     defines["PADDED_NUM_ATOMS"] = cc.intToString(cc.getPaddedNumAtoms());
-    ComputeProgram program = cc.compileProgram(CommonKernelSources::pythonForce, defines);
+    ComputeProgram program = cc.compileProgram(CommonTorchKernelSources::pythonTorchForce, defines);
     if (particles.size() > 0) {
         reorderedParticles.initialize<int>(cc, numParticles, "reorderedParticles");
         reorderedParticles.upload(particles);
@@ -186,14 +185,15 @@ void CommonCalcPythonTorchForceKernel::initialize(const ContextImpl& context, co
         addForcesKernel->addArg(cc.getAtomIndexArray());
         addForcesKernel->addArg(reorderedParticles);
         addForcesKernel->addArg(numParticles);
+        copyPositionsKernel = program->createKernel("copyPositionsSubset");
     }
     else {
         addForcesKernel = program->createKernel("addForcesAll");
         addForcesKernel->addArg(forcesArray);
         addForcesKernel->addArg(cc.getLongForceBuffer());
         addForcesKernel->addArg(cc.getAtomIndexArray());
+        copyPositionsKernel = program->createKernel("copyPositionsAll");
     }
-    copyPositionsKernel = program->createKernel("copyPositions");
     copyPositionsKernel->addArg(cc.getPosq());
     copyPositionsKernel->addArg(positionsArray);
     copyPositionsKernel->addArg(particles.size() > 0 ? reorderedParticles : cc.getAtomIndexArray());
