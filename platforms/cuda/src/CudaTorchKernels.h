@@ -92,34 +92,26 @@ private:
  */
 class CudaCalcPythonTorchForceKernel : public CommonCalcPythonTorchForceKernel {
 public:
-    CudaCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& contextImpl, OpenMM::ComputeContext& cc) :
-            CommonCalcPythonTorchForceKernel(name, platform, contextImpl, cc) {
-    }
-    // /**
-    //  * Initialize the kernel.
-    //  *
-    //  * @param context    the ContextImpl this kernel will be applied to
-    //  * @param force      the PythonTorchForce this kernel will be used for
-    //  */
-    // void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force);
-    // /**
-    //  * Execute the kernel to calculate the forces and/or energy.
-    //  *
-    //  * @param context        the context in which to execute this kernel
-    //  * @param includeForces  true if forces should be calculated
-    //  * @param includeEnergy  true if the energy should be calculated
-    //  * @return the potential energy due to the force
-    //  */
-    // double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
-    // /**
-    //  * Retrieve the current positions as a Tensor.  Subclasses can override this to do it
-    //  * more efficiently.
-    //  */
-    // virtual torch::Tensor getPositions();
-    // /**
-    //  * Add in the forces.  Subclasses can override this to do it more efficiently.
-    //  */
-    // virtual void addForces(torch::Tensor forceTensor);
+    CudaCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& contextImpl, OpenMM::ComputeContext& cc);
+    /**
+     * Initialize the kernel.
+     *
+     * @param context    the ContextImpl this kernel will be applied to
+     * @param force      the PythonTorchForce this kernel will be used for
+     */
+    void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force);
+    /**
+     * Retrieve the current positions as a Tensor.  This overrides the superclass to use
+     * a tensor stored on the GPU.
+     */
+    torch::Tensor getPositions();
+    /**
+     * Add in the forces.  This overrides the superclass to work with a tensor stored on the GPU.
+     */
+    void addForces(torch::Tensor forceTensor);
+private:
+    OpenMM::CudaContext& cu;
+    torch::Tensor posTensor;
 };
 
 
