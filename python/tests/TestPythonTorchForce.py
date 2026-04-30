@@ -66,6 +66,42 @@ class TestPythonTorchForce(unittest.TestCase):
             self.assertAlmostEqual(2.5*np.sum(filtered*filtered), state.getPotentialEnergy().value_in_unit(kilojoules_per_mole), places=5)
             self.assertTrue(np.allclose(-1.25*filtered, state.getForces(asNumpy=True).value_in_unit(kilojoules_per_mole/nanometer)))
 
+    def testPeriodic(self):
+        """Test using PythonTorchForce with periodic boundary conditions."""
+        def compute2(state, positions):
+            vectors = state.getPeriodicBoxVectors().value_in_unit(nanometer)
+            boxsize = torch.tensor(vectors, dtype=positions.dtype, device=positions.device).diag()
+            positions = positions - torch.floor(positions/boxsize)*boxsize
+            energy = torch.sum(positions**2)
+            force = -0.5*positions
+            return energy, force
+
+        system = System()
+        system.setDefaultPeriodicBoxVectors(Vec3(2, 0, 0), Vec3(0, 2, 0), Vec3(0, 0, 2))
+        for i in range(10):
+            system.addParticle(1.0)
+        force = PythonTorchForce(compute2)
+        system.addForce(force)
+        self.assertFalse(system.usesPeriodicBoundaryConditions())
+        force.setUsesPeriodicBoundaryConditions(True)
+        self.assertTrue(system.usesPeriodicBoundaryConditions())
+        positions = 10*np.random.rand(10, 3)-3
+        for i in range(Platform.getNumPlatforms()):
+            integrator = VerletIntegrator(0.001)
+            try:
+                context = Context(system, integrator, Platform.getPlatform(i))
+            except OpenMMException:
+                if i == 0:
+                    raise
+                else:
+                    # This happens on CI when no GPU is available.
+                    continue
+            context.setPositions(positions)
+            state = context.getState(energy=True, forces=True, positions=True, enforcePeriodicBox=True)
+            periodicPositions = state.getPositions(asNumpy=True).value_in_unit(nanometer)
+            self.assertAlmostEqual(np.sum(periodicPositions**2), state.getPotentialEnergy().value_in_unit(kilojoules_per_mole), places=5)
+            self.assertTrue(np.allclose(-0.5*periodicPositions, state.getForces(asNumpy=True).value_in_unit(kilojoules_per_mole/nanometer)))
+
     def testExceptions(self):
         """Test that PythonTorchForce handles exceptions correctly."""
         def compute2(state, pos):

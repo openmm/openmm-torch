@@ -5,364 +5,154 @@
 OpenMM PyTorch Plugin
 =====================
 
-This is a plugin for [OpenMM](http://openmm.org) that allows [PyTorch](https://pytorch.org/) static computation graphs
-to be used for defining an OpenMM `TorchForce` object, an [OpenMM `Force` class](http://docs.openmm.org/latest/api-python/library.html#forces) that computes a contribution to the potential energy or used as a collective variable via [`CustomCVForce`](http://docs.openmm.org/latest/api-python/generated/simtk.openmm.openmm.CustomCVForce.html#simtk.openmm.openmm.CustomCVForce).  
+This is a plugin for [OpenMM](http://openmm.org) that allows using [PyTorch](https://pytorch.org/) models to compute
+forces and energy in a simulation.  It provides two force classes, `TorchForce` and `PythonTorchForce`.  `TorchForce`
+is deprecated, since it relies on TorchScript which is no longer maintained.  `PythonTorchForce` is the recommended one
+to use in all cases.
 
-To use it, you create a PyTorch model that takes a `(nparticles,3)` tensor of particle positions (in nanometers) as input and produces energy (in kJ/mol) or the value of the collective variable as output.  
-The `TorchForce` provided by this plugin can then use the model to compute energy contributions or apply forces to particles during a simulation.
-`TorchForce` also supports the use of global context parameters that can be fed to the model and changed dynamically during runtime.
+`PythonTorchForce` is very similar to OpenMM's built in [`PythonForce`](https://docs.openmm.org/latest/api-python/generated/openmm.openmm.PythonForce.html)
+class, but it is specialized for use with PyTorch.  In particular, the particles positions and forces are represented
+with tensors instead of NumPy arrays.  The benefit is reducing overhead and improving performance.  When the OpenMM
+simulation and PyTorch model both run on the same GPU, coordinates and forces can be copied between them directly on the
+GPU without ever needing to transfer them to the host.
 
 Installation
 ============
 
-Installing with conda
----------------------
+Installing with pip
+-------------------
 
-We provide [conda](https://docs.conda.io/) packages for Linux and MacOS via [`conda-forge`](https://conda-forge.org/), which can be installed from the [conda-forge channel](https://anaconda.org/conda-forge/openmm-torch):
+We provide packages for Linux and macOS, which can be installed with the command:
+
 ```bash
-conda install -c conda-forge openmm-torch
+pip install openmmtorch
 ```
-If you don't have `conda` available, we recommend installing [Miniconda for Python 3](https://docs.conda.io/en/latest/miniconda.html) to provide the `conda` package manager.  
 
 Building from source
 --------------------
 
-This plugin uses [CMake](https://cmake.org/) as its build system.  
-Before compiling you must install [LibTorch](https://pytorch.org/cppdocs/installing.html), which is the PyTorch C++ API, by following the instructions at https://pytorch.org.
-You can then follow these steps:
+This plugin uses [CMake](https://cmake.org/) as its build system.  Before compiling you must install PyTorch by
+following the instructions at https://pytorch.org.  You can then follow these steps:
 
 1. Create a directory in which to build the plugin.
 
 2. Run the CMake GUI or `ccmake`, specifying your new directory as the build directory and the top
 level directory of this project as the source directory.
 
-3. Press "Configure".  (Do not worry if it produces an error message about not being able to find PyTorch.)
+3. Press "Configure".
 
 4. Set `OPENMM_DIR` to point to the directory where OpenMM is installed.  This is needed to locate
 the OpenMM header files and libraries.  If you are unsure of what directory this is, the following
 script will print it out.
 
 ```python
-from simtk import openmm
+import openmm
 import os
 print(os.path.dirname(openmm.version.openmm_library_path))
 ```
 
-5. Set `PYTORCH_DIR` to point to the directory where you installed the LibTorch.
+5. Usually PyTorch will be found automatically.  If it is not, set `Torch_DIR` to point to the directory containing its
+CMake configuration files (e.g. `<PyTorch root directory>/share/cmake/Torch`).
 
 6. Set `CMAKE_INSTALL_PREFIX` to the directory where the plugin should be installed.  Usually,
 this will be the same as `OPENMM_DIR`, so the plugin will be added to your OpenMM installation.
 
-7. If you plan to build the OpenCL platform, make sure that `OPENCL_INCLUDE_DIR` and
-`OPENCL_LIBRARY` are set correctly, and that `NN_BUILD_OPENCL_LIB` is selected.
+7. If you plan to build the OpenCL, CUDA, or HIP platform, make sure that `NN_BUILD_OPENCL_LIB`, `NN_BUILD_CUDA_LIB`,
+or `NN_BUILD_HIP_LIB` respectively is selected.  If the installed location of OpenCL, CUDA, or HIP was not found
+automatically, set the appropriate CMake variables to locate them.
 
-8. If you plan to build the CUDA platform, make sure that `CUDA_TOOLKIT_ROOT_DIR` is set correctly
-and that `NN_BUILD_CUDA_LIB` is selected.
+8. Press "Configure" again if necessary, then press "Generate".
 
-9. Press "Configure" again if necessary, then press "Generate".
+9. Type `make install` to install the plugin, then `make PythonInstall` to install the Python wrapper.
 
-10. Use the build system you selected to build and install the plugin.  For example, if you
-selected Unix Makefiles, type `make install` to install the plugin, and `make PythonInstall` to
-install the Python wrapper.
+Using PythonTorchForce
+======================
 
-Using the OpenMM PyTorch plugin
-===============================
-
-Tutorials
----------
-
-- [A simple simulation of alanine dipeptide with ANI-2x using OpenMM-Torch and NNPOps](tutorials/openmm-torch-nnpops.ipynb)
-
-Exporting a PyTorch model for use in OpenMM
--------------------------------------------
-
-The first step is to create a PyTorch model defining the calculation to perform.  
-It should take particle positions in nanometers (in the form of a `torch.Tensor` of shape `(nparticles,3)` as input,
-and return the potential energy in kJ/mol as a `torch.Scalar` as output.  
-
-The model must then be converted to a [TorchScript](https://pytorch.org/docs/stable/jit.html) module and saved to a file.  
-Converting to TorchScript can usually be done with a single call to [`torch.jit.script()`](https://pytorch.org/docs/stable/generated/torch.jit.script.html#torch.jit.script) or [`torch.jit.trace()`](https://pytorch.org/docs/stable/generated/torch.jit.trace.html#torch.jit.trace),
-although more complicated models can sometimes require extra steps.  
-See the [PyTorch documentation](https://pytorch.org/tutorials/beginner/Intro_to_TorchScript_tutorial.html) for details.  
-
-Here is a simple Python example that does this for a very simple potential---a harmonic force attracting every particle to the origin:
+To use PythonTorchForce, define a Python function that computes the interaction.  It should take two arguments, a
+State object and a Tensor of shape `(# particles, 3)`.  For example,
 
 ```python
 import torch
 
-class ForceModule(torch.nn.Module):
-    """A central harmonic potential as a static compute graph"""
-    def forward(self, positions):
-        """The forward method returns the energy computed from positions.
-
-        Parameters
-        ----------
-        positions : torch.Tensor with shape (nparticles,3)
-           positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-
-        Returns
-        -------
-        potential : torch.Scalar
-           The potential energy (in kJ/mol)
-        """
-        return torch.sum(positions**2)
-
-# Render the compute graph to a TorchScript module
-module = torch.jit.script(ForceModule())
-
-# Serialize the compute graph to a file
-module.save('model.pt')
+def compute(state, positions):
+    energy = torch.sum(positions**2)
+    forces = -0.5*positions
+    return energy, forces
 ```
 
-To use the exported model in a simulation, create a `TorchForce` object and add it to your `System`.  
-The constructor takes the path to the saved model as an argument.  
-Alternatively, the scripted module can be provided directly.  
-For example,
-```python
-# Create the TorchForce from the serialized compute graph
-from openmmtorch import TorchForce
-# Construct using a serialized module:
-torch_force = TorchForce('model.pt')
-# or using an instance of the module:
-torch_force = TorchForce(module)
+The State contains global parameters and periodic box vectors.  The Tensor contains particle positions.  The function
+should compute the potential energy and forces, returning them as its two return values.  The energy should be a
+scalar Tenor containing the value in kJ/mol.  The forces should be a Tensor of shape `(# particles, 3)` containing
+the value in kJ/mol/nm.
 
-# Add the TorchForce to your System
-system.addForce(torch_force)
-```
-
-Defining a model that uses periodic boundary conditions
--------------------------------------------------------
-
-When defining the model to perform a calculation, you may want to apply periodic boundary conditions.  
-
-To do this, call `setUsesPeriodicBoundaryConditions(True)` on the `TorchForce`.  
-The graph is then expected to take a second input, which contains the current periodic box vectors.  
-You can make use of them in whatever way you want for computing the force.  
-For example, the following code applies periodic boundary conditions to each
-particle position to translate all of them into a single periodic cell:
+Now create a PythonTorchForce, passing the function to the constructor.
 
 ```python
-class ForceModule(torch.nn.Module):
-    """A central harmonic force with periodic boundary conditions"""
-    def forward(self, positions, boxvectors):
-        """The forward method returns the energy computed from positions.
-
-        Parameters
-        ----------
-        positions : torch.Tensor with shape (nparticles,3)
-           positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-        boxvectors : torch.tensor with shape (3,3)
-           boxvectors[i,k] is the box vector component k (in nanometers) of box vector i
-
-        Returns
-        -------
-        potential : torch.Scalar
-           The potential energy (in kJ/mol)
-        """
-        # Image articles in rectilinear box
-        # NOTE: This will not work for non-orthogonal boxes
-        boxsize = boxvectors.diag()
-        periodicPositions = positions - torch.floor(positions/boxsize)*boxsize
-        # Compute central harmonic potential
-        return torch.sum(periodicPositions**2)
+from openmmtorch import PythonTorchForce
+force = PythonTorchForce(compute)
 ```
 
-Note that this code assumes a rectangular box.  Applying periodic boundary
-conditions with a triclinic box requires a slightly more complicated calculation.
-
-Defining global parameters that can be modified within the Context
-------------------------------------------------------------------
-
-The graph can also take arbitrary scalar arguments that are passed in at
-runtime.  For example, this model multiplies the energy by `scale`, which is
-passed as an argument to `forward()`.
+Do not make any assumptions about either the dtype or the device of the tensor containing positions.  Both of them may
+vary depending on the platform and precision mode used for the simulation.  If you require a particular dtype or device,
+call `to()` to ensure they are correct:
 
 ```python
-class ForceModule(torch.nn.Module):
-    """A central harmonic force with a user-defined global scale parameter"""
-    def forward(self, positions, scale):
-        """The forward method returns the energy computed from positions.
-
-        Parameters
-        ----------
-        positions : torch.Tensor with shape (nparticles,3)
-           positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-        scale : torch.Scalar
-           A scalar tensor defined by 'TorchForce.addGlobalParameter'.
-           Here, it scales the contribution to the potential.
-           Note that parameters are passed in the order defined by `TorchForce.addGlobalParameter`, not by name.
-
-        Returns
-        -------
-        potential : torch.Scalar
-           The potential energy (in kJ/mol)
-        """
-        return scale*torch.sum(positions**2)
+positions = positions.to(dtype=torch.float32, device='cuda:0')
 ```
 
-When you create the `TorchForce`, call `addGlobalParameter()` once for each extra argument.
+### Global Parameters
+
+The force can optionally depend on global parameters stored in the Context.  To do this, pass a dict to the constructor
+containing the names and default values of the parameters:
 
 ```python
-torch_force.addGlobalParameter('scale', 2.0)
+force = PythonTorchForce(compute, {'k':2.5})
 ```
 
-This specifies the name of the parameter and its initial value.  The name
-does not need to match the argument to `forward()`.  All global parameters
-are simply passed to the model in the order you define them.  The advantage
-of using global parameters is that you can change their values at any time
-by calling `setParameter()` on the `Context`.
+The computation function can then retrieve the parameter values from the State:
 
 ```python
-context.setParameter('scale', 5.0)
+def compute(state, positions):
+    k = state.getParameters()['k']
+    energy = k*torch.sum(positions**2)
+    forces = -0.5*k*positions
+    return energy, forces
 ```
 
-Computing forces in the model
------------------------------
-
-In the examples above, the PyTorch model computes the potential energy.  Backpropagation
-can be used to compute the corresponding forces.  That always works, but sometimes you
-may have a more efficient way to compute the forces than the generic backpropagation
-algorithm.  In that case, you can have the model directly compute forces as well as
-energy, returning both of them in a tuple.  Remember that the force is the *negative*
-gradient of the energy.
+You can change the parameter value at any time by calling `setParameter()` on the Context:
 
 ```python
-import torch
-
-class ForceModule(torch.nn.Module):
-    """A central harmonic potential that computes both energy and forces."""
-    def forward(self, positions):
-        """The forward method returns the energy and forces computed from positions.
-
-        Parameters
-        ----------
-        positions : torch.Tensor with shape (nparticles,3)
-           positions[i,k] is the position (in nanometers) of spatial dimension k of particle i
-
-        Returns
-        -------
-        potential : torch.Scalar
-           The potential energy (in kJ/mol)
-        forces : torch.Tensor with shape (nparticles,3)
-           The force (in kJ/mol/nm) on each particle
-        """
-        return (torch.sum(positions**2), -2*positions)
+context.setParameter('k', 5.0)
 ```
 
-When you create the `TorchForce`, call `setOutputsForces()` to tell it to expect the model
-to return forces.
+### Periodic Boundary Conditions
+
+If you want your force to depend on periodic boundary conditions, call `setUsesPeriodicBoundaryConditions(True)` on the
+PythonTorchForce.  This has two effects.  First, `usesPeriodicBoundaryConditions()` will return True, signaling to
+other code that your system is periodic.  Second, the State passed to the computation function will contain periodic
+box vectors.  You can use them however you want in computing the force.  For example,
 
 ```python
-torch_force.setOutputsForces(True)
+def compute2(state, positions):
+    vectors = state.getPeriodicBoxVectors().value_in_unit(nanometer)
+    boxsize = torch.tensor(vectors, dtype=positions.dtype, device=positions.device).diag()
+    positions = positions - torch.floor(positions/boxsize)*boxsize
+    energy = torch.sum(positions**2)
+    forces = -0.5*positions
+    return energy, forces
 ```
 
-Computing energy derivatives with respect to global parameters
---------------------------------------------------------------
+### Restricting to a Subset of Particles
 
-TorchForce can compute derivatives of the energy with respect to global parameters.. In order to do so the global parameters must be registered as energy derivatives. This is done by calling `addEnergyParameterDerivative()` for each parameter.
-
-The parameter derivatives can be queried by calling `getEnergyParameterDerivatives()` on the `State` object returned by `Context.getState()`. The result is a dictionary with the parameter names as keys and the derivatives as values.
+A PythonTorchForce can optionally be applied to only a subset of the particles in a system.  To do
+this, call `setParticles()` on it, providing the indices of the particles to apply it to.
 
 ```python
-import torch as pt
-from openmmtorch import TorchForce
-import openmm as mm
-
-
-class ForceWithParameters(pt.nn.Module):
-
-    def __init__(self):
-        super(ForceWithParameters, self).__init__()
-
-    def forward(self, positions: pt.Tensor, k: pt.Tensor) -> pt.Tensor:
-        return k * pt.sum(positions**2)
-
-
-numParticles = 10
-system = mm.System()
-for _ in range(numParticles):
-    system.addParticle(1.0)
-
-model = pt.jit.script(ForceWithParameters())
-tforce = TorchForce(model)
-tforce.setOutputsForces(False)
-tforce.addGlobalParameter("k", 2.0)
-tforce.addEnergyParameterDerivative("k")
-system.addForce(tforce)
-context = mm.Context(system, mm.VerletIntegrator(1.0))
-context.setPositions(pt.rand(numParticles, 3).numpy())
-state = context.getState(getParameterDerivatives=True)
-dEdk = state.getEnergyParameterDerivatives()["k"]
+force.setParticles(list(range(50)))  # Apply to only the first 50 particles
 ```
 
-
-
-Recording the model into a CUDA graph
--------------------------------------
-
-You can ask `TorchForce` to run the model using [CUDA graphs](https://pytorch.org/docs/stable/notes/cuda.html#cuda-graphs). Not every model will be compatible with this feature, but it can be a significant performance boost for some models. To enable it the CUDA platform must be used and an special property must be provided to `TorchForce`:
-
-```python
-torch_force.setProperty("useCUDAGraphs", "true")
-# The property can also be set at construction
-torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
-```
-
-The first time the model is run, it will be compiled (also known as recording) into a CUDA graph. Subsequent runs will use the compiled graph, which can be significantly faster. It is possible that compilation fails, in which case an `OpenMMException` will be raised. If that happens, you can disable CUDA graphs and try again.
-
-It is required to run the model at least once before recording, in what is known as warmup.
-By default ```TorchForce``` will run the model just a few times before recording, but controlling warmup steps might be desired. In these cases one can set the property ```CUDAGraphWarmupSteps```:
-```python
-torch_force.setProperty("CUDAGraphWarmupSteps", "12")
-```
-
-List of available properties
-----------------------------
-
-Some ```TorchForce``` functionalities can be customized by setting properties on an instance of it. Properties can be set at construction or by using ```setProperty```. A property is a pair of key/value strings. For instance:
-
-```python
-torch_force = TorchForce('model.pt', {'useCUDAGraphs': 'true'})
-#Alternatively setProperty can be used to configure an already created instance.
-#torch_force.setProperty("useCUDAGraphs", "true")
-print("Current properties:")
-for property in torch_force.getProperties():
-    print(property.key, property.value)
-```
-
-Currently, the following properties are available:
-
-1. useCUDAGraphs: Turns on the CUDA graph functionality
-2. CUDAGraphWarmupSteps: When CUDA graphs are being used, controls the number of warmup calls to the model before recording.
-
-License
-=======
-
-This is part of the OpenMM molecular simulation toolkit originating from
-Simbios, the NIH National Center for Physics-Based Simulation of
-Biological Structures at Stanford, funded under the NIH Roadmap for
-Medical Research, grant U54 GM072970. See https://simtk.org.
-
-Portions copyright (c) 2018-2020 Stanford University and the Authors.
-
-Authors: Peter Eastman
-
-Contributors: Raimondas Galvelis, Jaime Rodriguez-Guerra, Yaoyi Chen, John D. Chodera
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to deal in the Software without restriction, including without limitation
-the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, and to permit persons to whom the
-Software is furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-THE AUTHORS, CONTRIBUTORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
-OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
-USE OR OTHER DEALINGS IN THE SOFTWARE.
+The  computation function should then proceed as if those particles were the entire system.  The positions
+passed to it will be a smaller Tensor containing only the positions of those particles, and the returned
+forces should similarly contain only those particles.  That is, `forces[i]` should be the force on the i'th
+particle passed to `setParticles()`.  When applying forces to only a small fraction of the particles in a
+system, this can greatly improve performance.

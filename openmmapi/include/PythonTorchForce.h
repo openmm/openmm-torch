@@ -60,28 +60,28 @@ public:
 };
 
 /**
- * This class provides a mechanism for computing forces and energy with Python code.  To use it,
- * define a Python function that takes a State object as its only argument.  The State contains
- * particle positions and global parameters.  Based on it, the function should compute the
- * potential energy and forces, returning them as its two return values.  The forces should be
- * represented as a NumPy array of shape (# particles, 3).  For example,
+ * This class provides a mechanism for computing forces and energy with Python code.  It is similar to the
+ * PythonForce class included with OpenMM, but it is specialized to give better performance when working with
+ * PyTorch models.
+ *
+ * To use it, define a Python function that takes two arguments: a State object and a Tensor of shape (# particles, 3).
+ * The State contains global parameters and periodic box vectors.  The Tensor contains particle positions.  The function
+ * should compute the potential energy and forces, returning them as its two return values.  The energy should be a
+ * scalar Tenor containing the value in kJ/mol.  The forces should be a Tensor of shape (# particles, 3) containing
+ * the value in kJ/mol/nm.  For example,
  * 
  * \verbatim embed:rst:leading-asterisk
  * .. code-block:: python
  * 
- *    def compute(state):
- *        pos = state.getPositions(asNumpy=True).value_in_unit(nanometer)
+ *    def compute(state, pos):
  *        k = state.getParameters()['k']
- *        energy = k*np.sum(pos*pos)
+ *        energy = k*torch.sum(pos*pos)
  *        force = -0.5*k*pos
- *        return energy*kilojoules_per_mole, force*kilojoules_per_mole/nanometer
- * 
+ *        return energy, force
+ *
  * \endverbatim
  * 
- * Attaching units to the return values is optional.  If units are omitted, the values are assumed
- * to be in the default units (energy in kJ/mol, forces in kJ/mol/nm).
- * 
- * Now create a Python force, passing the function to the constructor.  If you want the force
+ * Now create a PythonTorchForce, passing the function to the constructor.  If you want the force
  * to depend on global parameters, pass a dict as the second parameter with the names and default
  * values of the parameters.
  * 
@@ -104,23 +104,16 @@ public:
  *
  * A PythonTorchForce can optionally be applied to only a subset of the particles in a system.  To do
  * this, call setParticles() on it, providing the indices of the particles to apply it to.  The
- * computation function should then proceed as if those particles were the entire system.
- * state.getPositions() will return a smaller array containing only the positions of those
- * particles, and the array of forces should similarly contain only those particles.  That is,
- * forces[i] should be the force on the i'th particle passed to setParticles().  When applying
- * forces to only a small fraction of the particles in a system, this can greatly improve
- * performance.
+ * computation function should then proceed as if those particles were the entire system.  The positions
+ * passed to it will be a smaller Tensor containing only the positions of those particles, and the returned
+ * forces should similarly contain only those particles.  That is, forces[i] should be the force on the i'th
+ * particle passed to setParticles().  When applying forces to only a small fraction of the particles in a
+ * system, this can greatly improve performance.
  * 
  * When using XmlSerializer to save a PythonTorchForce, it uses the Python pickle module to save
  * the computation function.  If it cannot be pickled, you will not be able to serialize the
  * PythonTorchForce.  Functions defined at the top level of a module can usually be pickled, but local
  * functions defined inside another function cannot.
- * 
- * Compared to other types of forces, computing a force with Python code is slow and has high
- * overhead.  When possible, using a different force class is usually preferred.  For example,
- * the Python force shown in the example code above (a harmonic force attracting every particle
- * to the origin) could be implemented just as easily with a CustomExternalForce, and would
- * execute much faster if done that way.
  */
 class OPENMM_EXPORT PythonTorchForce : public OpenMM::Force {
 public:
