@@ -9,7 +9,6 @@ dependencies:
   - pip
   - pytest
   - python
-  - pytorch-gpu @PYTORCH_VERSION@
   - swig
   - sysroot_linux-64 2.17
   - libxcrypt
@@ -17,3 +16,6 @@ dependencies:
   - hipcc
   - rocm-cmake
   - rocm-device-libs
+  - pip:
+    - --index-url https://download.pytorch.org/whl/rocm7.2
+    - torch
