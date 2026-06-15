@@ -1,0 +1,19 @@
+name: build
+channels:
+  - conda-forge
+dependencies:
+  - cmake
+  - gxx_linux-64 @GCC_VERSION@
+  - make
+  - openmm >=8.5
+  - pip
+  - pytest
+  - python
+  - pytorch-gpu @PYTORCH_VERSION@
+  - swig
+  - sysroot_linux-64 2.17
+  - libxcrypt
+  - hip-devel
+  - hipcc
+  - rocm-cmake
+  - rocm-device-libs

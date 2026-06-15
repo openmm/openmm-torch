@@ -24,14 +24,25 @@ jobs:
         include:
           - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.1)
             os: ubuntu-22.04
+            env: ubuntu-22.04
             cuda-version: "11.8.0"
             gcc-version: "10.3.*"
             nvcc-version: "11.8"
             python-version: "3.10"
             pytorch-version: "2.1.*"
 
+          - name: Linux (HIP, Python 3.14, PyTorch 2.12)
+            os: ubuntu-22.04
+            env: ubuntu-22.04-hip
+            cuda-version: ""
+            gcc-version: "10.3.*"
+            nvcc-version: ""
+            python-version: "3.14"
+            pytorch-version: "2.12.*"
+
           - name: MacOS ARM (Python 3.11, PyTorch 2.4)
             os: macos-latest
+            env: macos-latest
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
@@ -40,6 +51,7 @@ jobs:
 
           - name: MacOS Intel (Python 3.11, PyTorch 2.4)
             os: macos-13
+            env: macos-13
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
@@ -71,7 +83,7 @@ jobs:
         with:
           tokenPrefix: '@'
           tokenSuffix: '@'
-          files: devtools/conda-envs/build-${{ matrix.os }}.yml
+          files: devtools/conda-envs/build-${{ matrix.env }}.yml
         env:
           CUDATOOLKIT_VERSION: ${{ matrix.cuda-version }}
           GCC_VERSION: ${{ matrix.gcc-version }}
@@ -82,7 +94,7 @@ jobs:
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
-          environment-file: devtools/conda-envs/build-${{ matrix.os }}.yml
+          environment-file: devtools/conda-envs/build-${{ matrix.env }}.yml
           miniforge-variant: Miniforge3
           use-mamba: true
           python-version: ${{ matrix.python-version }}
@@ -132,7 +144,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
-          ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
+          ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL|TestHip"
 
       - name: "Run Python test"
         shell: bash -l {0}
