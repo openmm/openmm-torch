@@ -78,7 +78,7 @@ jobs:
           NVCC_VERSION: ${{ matrix.nvcc-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
