@@ -214,8 +214,6 @@ namespace TorchPlugin {
             // Clean up before returning.
 
             Py_XDECREF(result);
-            Py_XDECREF(pyenergy);
-            Py_XDECREF(pyforces);
             PyGILState_Release(gstate);
             return forces;
         }
