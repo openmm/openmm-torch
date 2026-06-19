@@ -26,7 +26,7 @@ jobs:
             os: ubuntu-22.04
             cuda-version: "13.0"
             gcc-version: "10.3.*"
-            nvcc-version: "12.8"
+            nvcc-version: "13.0"
             python-version: "3.14"
             pytorch-version: "2.12.*"
 
