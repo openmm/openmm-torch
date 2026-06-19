@@ -5,7 +5,7 @@
 # The version number is set here and copied to anywhere it is needed.
 SET(OPENMM_TORCH_VERSION 1.5 CACHE STRING "The version of OpenMM-Torch that will be built." FORCE)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
 
 # We need to know where OpenMM is installed so we can access the headers and libraries.
 SET(OPENMM_DIR "/usr/local/openmm" CACHE PATH "Where OpenMM is installed")
