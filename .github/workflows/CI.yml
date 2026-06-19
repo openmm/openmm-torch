@@ -114,7 +114,7 @@ jobs:
             -DNN_BUILD_OPENCL_LIB=ON \
             -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
             -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
-            -DCMAKE_CUDA_COMPILER="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/bin/nvcc"
+            -DCUDAToolkit_ROOT="${{steps.cuda-toolkit.outputs.CUDA_PATH}}"
 
       - name: "Build"
         shell: bash -l {0}
