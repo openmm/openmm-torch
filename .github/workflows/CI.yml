@@ -22,13 +22,13 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.1)
+          - name: Linux (CUDA 13.2, Python 3.14, PyTorch 2.12)
             os: ubuntu-22.04
-            cuda-version: "11.8.0"
+            cuda-version: "13.2.0"
             gcc-version: "10.3.*"
-            nvcc-version: "11.8"
-            python-version: "3.10"
-            pytorch-version: "2.1.*"
+            nvcc-version: "13.2"
+            python-version: "3.14"
+            pytorch-version: "2.12.*"
 
           - name: MacOS ARM (Python 3.11, PyTorch 2.4)
             os: macos-latest
