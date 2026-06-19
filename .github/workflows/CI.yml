@@ -112,7 +112,8 @@ jobs:
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
             -DNN_BUILD_OPENCL_LIB=ON \
             -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
-            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT}
+            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
+            -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc
 
       - name: "Build"
         shell: bash -l {0}
