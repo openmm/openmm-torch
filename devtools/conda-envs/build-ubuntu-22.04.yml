@@ -3,7 +3,7 @@ channels:
   - conda-forge
 dependencies:
   - cmake
-  - cudatoolkit @CUDATOOLKIT_VERSION@
+  - cuda-version @CUDATOOLKIT_VERSION@
   - gxx_linux-64 @GCC_VERSION@
   - make
   - nnpops
