@@ -5,7 +5,8 @@
 # The version number is set here and copied to anywhere it is needed.
 SET(OPENMM_TORCH_VERSION 1.5 CACHE STRING "The version of OpenMM-Torch that will be built." FORCE)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.31)
+PROJECT(OpenMM-Torch)
 
 # We need to know where OpenMM is installed so we can access the headers and libraries.
 SET(OPENMM_DIR "/usr/local/openmm" CACHE PATH "Where OpenMM is installed")
@@ -129,7 +130,7 @@ add_custom_target(CopyTestFiles ALL DEPENDS ${COPIED_TEST_FILES})
 ADD_SUBDIRECTORY(platforms/reference)
 
 SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}")
-FIND_PACKAGE(OpenCL QUIET)
+FIND_PACKAGE(OPENCL QUIET)
 IF(OPENCL_FOUND)
     SET(NN_BUILD_OPENCL_LIB ON CACHE BOOL "Build implementation for OpenCL")
 ELSE(OPENCL_FOUND)

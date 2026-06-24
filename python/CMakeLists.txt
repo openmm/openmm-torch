@@ -24,7 +24,7 @@ add_custom_target(PythonInstall DEPENDS "${WRAP_FILE}"  "${CMAKE_CURRENT_SOURCE_
 set(NN_PLUGIN_HEADER_DIR "${CMAKE_SOURCE_DIR}/openmmapi/include")
 set(NN_PLUGIN_LIBRARY_DIR "${CMAKE_BINARY_DIR}")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/setup.py ${CMAKE_CURRENT_BINARY_DIR}/setup.py)
-add_custom_command(TARGET PythonInstall
+add_custom_command(TARGET PythonInstall POST_BUILD
     COMMAND "${PYTHON_EXECUTABLE}" -m pip install .
     WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}"
 )
