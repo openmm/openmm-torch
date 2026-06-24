@@ -10,7 +10,6 @@ dependencies:
   - ocl-icd
   - openmm >=8.1
   - pip
-  - pocl
   - pytest
   - python
   - pytorch-gpu @PYTORCH_VERSION@

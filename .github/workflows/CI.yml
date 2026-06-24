@@ -29,6 +29,7 @@ jobs:
             nvcc-version: "13.0"
             python-version: "3.14"
             pytorch-version: "2.12.*"
+            opencl: true
 
           - name: MacOS ARM (Python 3.11, PyTorch 2.4)
             os: macos-latest
@@ -37,6 +38,7 @@ jobs:
             nvcc-version: ""
             python-version: "3.11"
             pytorch-version: "2.4.*"
+            opencl: false
 
           - name: MacOS Intel (Python 3.13, PyTorch 2.5)
             os: macos-15-intel
@@ -45,6 +47,7 @@ jobs:
             nvcc-version: ""
             python-version: "3.13"
             pytorch-version: "2.5.*"
+            opencl: false
 
 
     steps:
@@ -58,6 +61,10 @@ jobs:
           cuda: ${{ matrix.cuda-version }}.0
           linux-local-args: '["--toolkit", "--override"]'
         if: startsWith(matrix.os, 'ubuntu')
+
+      - name: "Install OpenCL on Ubuntu (if needed)"
+        if: matrix.opencl == true
+        run: source devtools/ci/gh-actions/scripts/install_intel_opencl.sh
 
       - name: Manage disk space
         if: startsWith(matrix.os, 'ubuntu')
@@ -112,8 +119,6 @@ jobs:
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
             -DNN_BUILD_OPENCL_LIB=ON \
-            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
-            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT} \
             -DCUDAToolkit_ROOT="${{steps.cuda-toolkit.outputs.CUDA_PATH}}" \
             -DCMAKE_CUDA_COMPILER="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/bin/nvcc"
 
@@ -135,6 +140,9 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
+          if [[ ${{ matrix.opencl }} == true ]]; then
+            source /opt/intel/oneapi/setvars.sh
+          fi
           ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
 
       - name: "Run Python test"
@@ -142,4 +150,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
+          if [[ ${{ matrix.opencl }} == true ]]; then
+            source /opt/intel/oneapi/setvars.sh
+          fi
           pytest --verbose Test*
