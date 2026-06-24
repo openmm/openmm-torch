@@ -1,12 +1,10 @@
 /* -------------------------------------------------------------------------- *
- *                               OpenMM-NN                                    *
+ *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
- * This is part of the OpenMM molecular simulation toolkit originating from   *
- * Simbios, the NIH National Center for Physics-Based Simulation of           *
- * Biological Structures at Stanford, funded under the NIH Roadmap for        *
- * Medical Research, grant U54 GM072970. See https://simtk.org.               *
+ * This is part of the OpenMM molecular simulation toolkit.                   *
+ * See https://openmm.org/development.                                        *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2026 Stanford University and the Authors.           *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -29,40 +27,40 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "ReferenceTorchKernelFactory.h"
-#include "ReferenceTorchKernels.h"
-#include "openmm/reference/ReferencePlatform.h"
-#include "openmm/internal/ContextImpl.h"
+#include "internal/PythonTorchForceImpl.h"
+#include "TorchKernels.h"
 #include "openmm/OpenMMException.h"
-#include <vector>
+#include "openmm/internal/ContextImpl.h"
+#include "openmm/kernels.h"
+#include <set>
 
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-extern "C" OPENMM_EXPORT void registerPlatforms() {
+PythonTorchForceImpl::PythonTorchForceImpl(const PythonTorchForce& owner) : owner(owner), computation(owner.getComputation()),
+        defaultParameters(owner.getGlobalParameters()), usePeriodic(owner.usesPeriodicBoundaryConditions()) {
+    forceGroup = owner.getForceGroup();
 }
 
-extern "C" OPENMM_EXPORT void registerKernelFactories() {
-    for (int i = 0; i < Platform::getNumPlatforms(); i++) {
-        Platform& platform = Platform::getPlatform(i);
-        if (dynamic_cast<ReferencePlatform*>(&platform) != NULL) {
-            ReferenceTorchKernelFactory* factory = new ReferenceTorchKernelFactory();
-            platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
-            platform.registerKernelFactory(CalcPythonTorchForceKernel::Name(), factory);
-        }
-    }
+PythonTorchForceImpl::~PythonTorchForceImpl() {
 }
 
-extern "C" OPENMM_EXPORT void registerTorchReferenceKernelFactories() {
-    registerKernelFactories();
+void PythonTorchForceImpl::initialize(ContextImpl& context) {
+    kernel = context.getPlatform().createKernel(CalcPythonTorchForceKernel::Name(), context);
+    kernel.getAs<CalcPythonTorchForceKernel>().initialize(context, owner);
 }
 
-KernelImpl* ReferenceTorchKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
-    ReferencePlatform::PlatformData& data = *static_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
-    if (name == CalcTorchForceKernel::Name())
-        return new ReferenceCalcTorchForceKernel(name, platform);
-    if (name == CalcPythonTorchForceKernel::Name())
-        return new ReferenceCalcPythonTorchForceKernel(name, platform);
-    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
+double PythonTorchForceImpl::calcForcesAndEnergy(ContextImpl& context, bool includeForces, bool includeEnergy, int groups) {
+    if ((groups&(1<<forceGroup)) != 0)
+        return kernel.getAs<CalcPythonTorchForceKernel>().execute(context, includeForces, includeEnergy);
+    return 0.0;
+}
+
+vector<string> PythonTorchForceImpl::getKernelNames() {
+    return {CalcCustomCPPForceKernel::Name()};
+}
+
+map<string, double> PythonTorchForceImpl::getDefaultParameters() {
+    return defaultParameters;
 }

@@ -21,7 +21,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Install dependencies with Mamba"
-        uses: conda-incubator/setup-miniconda@v2
+        uses: conda-incubator/setup-miniconda@v4
         with:
           activate-environment: test
           environment-file: devtools/conda-envs/test-tutorials.yml

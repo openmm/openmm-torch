@@ -6,7 +6,7 @@ import pytest
 import torch as pt
 from tempfile import NamedTemporaryFile
 
-@pytest.mark.parametrize('model_file,',
+@pytest.mark.parametrize('model_file',
                         ['../../tests/central.pt',
                          '../../tests/forces.pt'])
 def testConstructors(model_file):

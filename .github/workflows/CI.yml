@@ -22,13 +22,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Linux (CUDA 11.8, Python 3.10, PyTorch 2.1)
+          - name: Linux (CUDA 13.0, Python 3.14, PyTorch 2.12)
             os: ubuntu-22.04
-            cuda-version: "11.8.0"
+            cuda-version: "13.0"
             gcc-version: "10.3.*"
-            nvcc-version: "11.8"
-            python-version: "3.10"
-            pytorch-version: "2.1.*"
+            nvcc-version: "13.0"
+            python-version: "3.14"
+            pytorch-version: "2.12.*"
+            opencl: true
 
           - name: MacOS ARM (Python 3.11, PyTorch 2.4)
             os: macos-latest
@@ -37,14 +38,16 @@ jobs:
             nvcc-version: ""
             python-version: "3.11"
             pytorch-version: "2.4.*"
+            opencl: false
 
-          - name: MacOS Intel (Python 3.11, PyTorch 2.4)
-            os: macos-13
+          - name: MacOS Intel (Python 3.13, PyTorch 2.5)
+            os: macos-15-intel
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
-            python-version: "3.11"
-            pytorch-version: "2.4.*"
+            python-version: "3.13"
+            pytorch-version: "2.5.*"
+            opencl: false
 
 
     steps:
@@ -52,11 +55,16 @@ jobs:
         uses: actions/checkout@v2
 
       - name: "Install CUDA Toolkit on Linux (if needed)"
-        uses: Jimver/cuda-toolkit@v0.2.15
+        uses: Jimver/cuda-toolkit@v0.2.35
+        id: cuda-toolkit
         with:
-          cuda: ${{ matrix.cuda-version }}
+          cuda: ${{ matrix.cuda-version }}.0
           linux-local-args: '["--toolkit", "--override"]'
         if: startsWith(matrix.os, 'ubuntu')
+
+      - name: "Install OpenCL on Ubuntu (if needed)"
+        if: matrix.opencl == true
+        run: source devtools/scripts/install_intel_opencl.sh
 
       - name: Manage disk space
         if: startsWith(matrix.os, 'ubuntu')
@@ -78,7 +86,7 @@ jobs:
           NVCC_VERSION: ${{ matrix.nvcc-version }}
           PYTORCH_VERSION: ${{ matrix.pytorch-version }}
 
-      - uses: conda-incubator/setup-miniconda@v2
+      - uses: conda-incubator/setup-miniconda@v4
         name: "Install dependencies with Mamba"
         with:
           activate-environment: build
@@ -111,8 +119,8 @@ jobs:
             -DOPENMM_DIR=${CONDA_PREFIX} \
             -DTorch_DIR=${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/share/cmake/Torch \
             -DNN_BUILD_OPENCL_LIB=ON \
-            -DOPENCL_INCLUDE_DIR=${CONDA_PREFIX}/include \
-            -DOPENCL_LIBRARY=${CONDA_PREFIX}/lib/libOpenCL${SHLIB_EXT}
+            -DCUDAToolkit_ROOT="${{steps.cuda-toolkit.outputs.CUDA_PATH}}" \
+            -DCMAKE_CUDA_COMPILER="${{steps.cuda-toolkit.outputs.CUDA_PATH}}/bin/nvcc"
 
       - name: "Build"
         shell: bash -l {0}
@@ -132,6 +140,9 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd build
+          if [[ ${{ matrix.opencl }} == true ]]; then
+            source /opt/intel/oneapi/setvars.sh
+          fi
           ctest --output-on-failure --exclude-regex "TestCuda|TestOpenCL"
 
       - name: "Run Python test"
@@ -139,4 +150,7 @@ jobs:
         run: |
           export LD_LIBRARY_PATH="${CONDA_PREFIX}/lib/python${{ matrix.python-version }}/site-packages/torch/lib:${LD_LIBRARY_PATH}"
           cd python/tests
+          if [[ ${{ matrix.opencl }} == true ]]; then
+            source /opt/intel/oneapi/setvars.sh
+          fi
           pytest --verbose Test*

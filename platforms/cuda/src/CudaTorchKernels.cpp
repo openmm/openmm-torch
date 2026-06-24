@@ -37,6 +37,7 @@
 #include <cuda_runtime_api.h>
 #include <c10/cuda/CUDAGuard.h>
 #include <c10/cuda/CUDAStream.h>
+
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
@@ -283,4 +284,33 @@ double CudaCalcTorchForceKernel::execute(ContextImpl& context, bool includeForce
     CHECK_RESULT(cuCtxPopCurrent(&ctx), "Failed to pop the CUDA context");
     assert(primaryContext == ctx); // Check that the correct context was popped
     return energy;
+}
+
+CudaCalcPythonTorchForceKernel::CudaCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform, OpenMM::ContextImpl& contextImpl, OpenMM::ComputeContext& cc) :
+        CommonCalcPythonTorchForceKernel(name, platform, contextImpl, cc), cu(dynamic_cast<CudaContext&>(cc)) {
+}
+
+void CudaCalcPythonTorchForceKernel::initialize(const ContextImpl& context, const PythonTorchForce& force) {
+    CommonCalcPythonTorchForceKernel::initialize(context, force);
+    torch::Device device(torch::kCUDA, cu.getDeviceIndex());
+    torch::TensorOptions options = torch::TensorOptions().device(device).dtype(cu.getUseDoublePrecision() ? torch::kFloat64 : torch::kFloat32);
+    posTensor = torch::empty({numParticles, 3}, options.requires_grad(true));
+}
+
+torch::Tensor CudaCalcPythonTorchForceKernel::getPositions() {
+    ContextSelector selector(cc);
+    copyPositionsKernel->execute(numParticles);
+    CUdeviceptr source = cu.unwrap(positionsArray).getDevicePointer();
+    CUdeviceptr dest = (CUdeviceptr) getTensorPointer(cu, posTensor);
+    CHECK_RESULT(cuMemcpyDtoDAsync(dest, source, positionsArray.getSize()*positionsArray.getElementSize(), cu.getCurrentStream()), "Error copying positions");
+    return posTensor;
+}
+
+void CudaCalcPythonTorchForceKernel::addForces(torch::Tensor forceTensor) {
+    ContextSelector selector(cc);
+    forceTensor = forceTensor.to(posTensor.device()).to(posTensor.dtype());
+    CUdeviceptr source = (CUdeviceptr) getTensorPointer(cu, forceTensor);
+    CUdeviceptr dest = cu.unwrap(forcesArray).getDevicePointer();
+    CHECK_RESULT(cuMemcpyDtoDAsync(dest, source, forcesArray.getSize()*forcesArray.getElementSize(), cu.getCurrentStream()), "Error copying forces");
+    addForcesKernel->execute(cc.getNumAtoms());
 }

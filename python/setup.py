@@ -11,7 +11,7 @@ torch_dir, _ = os.path.split('@TORCH_LIBRARY@')
 
 extra_compile_args = ['-std=c++17']
 extra_link_args = []
-libraries = ['OpenMM', 'OpenMMTorch']
+libraries = ['OpenMM', 'OpenMMTorch', 'torch_python']
 runtime_library_dirs = [os.path.join(openmm_dir, 'lib'), torch_dir]
 
 # For Windows change the compiler flag to /std:c++17

@@ -126,3 +126,53 @@ double ReferenceCalcTorchForceKernel::execute(ContextImpl& context, bool include
     }
     return energyTensor.item<double>();
 }
+
+void ReferenceCalcPythonTorchForceKernel::initialize(const ContextImpl& context, const PythonTorchForce& force) {
+    computation = &force.getComputation();
+    particles = force.getParticles();
+    numParticles = particles.size();
+    if (numParticles == 0)
+        numParticles = context.getSystem().getNumParticles();
+    else
+        positions.resize(numParticles);
+    usePeriodic = force.usesPeriodicBoundaryConditions();
+}
+
+double ReferenceCalcPythonTorchForceKernel::execute(ContextImpl& context, bool includeForces, bool includeEnergy) {
+    vector<Vec3>& posData = extractPositions(context);
+    vector<Vec3>& forceData = extractForces(context);
+    State::StateBuilder builder(context.getTime(), context.getStepCount());
+    torch::Tensor posTensor;
+    if (particles.size() == 0)
+        posTensor = torch::from_blob(posData.data(), {numParticles, 3}, torch::TensorOptions().dtype(torch::kFloat64).requires_grad(true));
+    else {
+        for (int i = 0; i < particles.size(); i++)
+            positions[i] = posData[particles[i]];
+        posTensor = torch::from_blob(positions.data(), {numParticles, 3}, torch::TensorOptions().dtype(torch::kFloat64).requires_grad(true));
+    }
+    builder.setParameters(context.getParameters());
+    if (usePeriodic) {
+        Vec3 a, b, c;
+        context.getPeriodicBoxVectors(a, b, c);
+        builder.setPeriodicBoxVectors(a, b, c);
+    }
+    double energy;
+    State state = builder.getState();
+    torch::Tensor forceTensor = computation->compute(state, posTensor, energy);
+    if (includeForces) {
+        if (!(forceTensor.dtype() == torch::kFloat64))
+            forceTensor = forceTensor.to(torch::kFloat64);
+        double* outputForces = forceTensor.data_ptr<double>();
+        if (particles.size() == 0) {
+            for (int i = 0; i < numParticles; i++)
+                for (int j = 0; j < 3; j++)
+                    forceData[i][j] += outputForces[3*i+j];
+        }
+        else {
+            for (int i = 0; i < numParticles; i++)
+                for (int j = 0; j < 3; j++)
+                    forceData[particles[i]][j] += outputForces[3*i+j];
+        }
+    }
+    return energy;
+}

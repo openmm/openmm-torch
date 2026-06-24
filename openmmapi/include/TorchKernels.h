@@ -9,7 +9,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2018-2026 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -33,6 +33,7 @@
  * -------------------------------------------------------------------------- */
 
 #include "TorchForce.h"
+#include "PythonTorchForce.h"
 #include "openmm/KernelImpl.h"
 #include "openmm/Platform.h"
 #include "openmm/System.h"
@@ -59,6 +60,34 @@ public:
      * @param module         the PyTorch module to use for computing forces and energy
      */
     virtual void initialize(const OpenMM::System& system, const TorchForce& force, torch::jit::script::Module& module) = 0;
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    virtual double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy) = 0;
+};
+
+/**
+ * This kernel is invoked by PythonTorchForce to calculate the forces acting on the system and the energy of the system.
+ */
+class CalcPythonTorchForceKernel : public OpenMM::KernelImpl {
+public:
+    static std::string Name() {
+        return "CalcPythonTorchForce";
+    }
+    CalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform) : OpenMM::KernelImpl(name, platform) {
+    }
+    /**
+     * Initialize the kernel.
+     *
+     * @param context    the ContextImpl this kernel will be applied to
+     * @param force      the PythonTorchForce this kernel will be used for
+     */
+    virtual void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force) = 0;
     /**
      * Execute the kernel to calculate the forces and/or energy.
      *

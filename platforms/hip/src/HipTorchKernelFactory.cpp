@@ -6,7 +6,7 @@
  * Biological Structures at Stanford, funded under the NIH Roadmap for        *
  * Medical Research, grant U54 GM072970. See https://simtk.org.               *
  *                                                                            *
- * Portions copyright (c) 2024 Stanford University and the Authors.           *
+ * Portions copyright (c) 2024-2025 Stanford University and the Authors.      *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -51,6 +51,7 @@ extern "C" OPENMM_EXPORT void registerKernelFactories() {
         Platform& platform = Platform::getPlatformByName("HIP");
         HipTorchKernelFactory* factory = new HipTorchKernelFactory();
         platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
+        platform.registerKernelFactory(CalcPythonTorchForceKernel::Name(), factory);
     }
     catch (std::exception ex) {
         // Ignore
@@ -71,5 +72,7 @@ KernelImpl* HipTorchKernelFactory::createKernelImpl(std::string name, const Plat
     HipContext& cc = *static_cast<HipPlatform::PlatformData*>(context.getPlatformData())->contexts[0];
     if (name == CalcTorchForceKernel::Name())
         return new CommonCalcTorchForceKernel(name, platform, cc);
+    if (name == CalcPythonTorchForceKernel::Name())
+        return new CommonCalcPythonTorchForceKernel(name, platform, context, cc);
     throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
 }
