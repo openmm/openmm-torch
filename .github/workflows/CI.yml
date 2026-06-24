@@ -43,8 +43,8 @@ jobs:
             cuda-version: ""
             gcc-version: ""
             nvcc-version: ""
-            python-version: "3.11"
-            pytorch-version: "2.4.*"
+            python-version: "3.13"
+            pytorch-version: "2.5.*"
 
 
     steps:

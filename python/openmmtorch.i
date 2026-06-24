@@ -277,6 +277,7 @@ namespace TorchPlugin {
                 throw OpenMM::OpenMMException("PythonTorchForceProxy: Could not serialize PythonTorchForce because its function could not be pickled.");
             node.setStringProperty("function", hexEncode(force.getPickledFunction()));
             node.setIntProperty("forceGroup", force.getForceGroup());
+            node.setStringProperty("name", force.getName());
             node.setBoolProperty("usesPeriodic", force.usesPeriodicBoundaryConditions());
             OpenMM::SerializationNode& globalParams = node.createChildNode("GlobalParameters");
             for (auto param : force.getGlobalParameters())
@@ -306,6 +307,7 @@ namespace TorchPlugin {
             PythonTorchForce* force = _createPythonTorchForce(function, params, particles);
             if (node.hasProperty("forceGroup"))
                 force->setForceGroup(node.getIntProperty("forceGroup", 0));
+            force->setName(node.getStringProperty("name", force->getName()));
             if (node.hasProperty("usesPeriodic"))
                 force->setUsesPeriodicBoundaryConditions(node.getBoolProperty("usesPeriodic"));
             return force;

@@ -132,6 +132,7 @@ class TestPythonTorchForce(unittest.TestCase):
         force1 = PythonTorchForce(compute, {'k':2.5})
         force1.setUsesPeriodicBoundaryConditions(True)
         force1.setParticles([1,3,5])
+        force1.setName("custom name")
 
         # Make a copy by serializing and the deserializing it.
 
@@ -144,6 +145,7 @@ class TestPythonTorchForce(unittest.TestCase):
         self.assertEqual(dict(force2.getGlobalParameters()), {'k':2.5})
         self.assertEqual(force1.getParticles(), force2.getParticles())
         self.assertTrue(force2.usesPeriodicBoundaryConditions())
+        self.assertEqual(force1.getName(), force2.getName())
 
         # A locally defined function cannot be pickled.  We should not be able to serialize a force
         # that uses it.
@@ -163,24 +165,32 @@ class TestPythonTorchForce(unittest.TestCase):
         force = PythonTorchForce(compute, {'k':2.5})
         system.addForce(force)
         positions = np.random.rand(5, 3)
-        integrator = VerletIntegrator(0.001)
-        context = Context(system, integrator, Platform.getPlatform('Reference'))
-        context.setPositions(positions)
+        for i in range(Platform.getNumPlatforms()):
+            integrator = VerletIntegrator(0.001)
+            try:
+                context = Context(system, integrator, Platform.getPlatform(i))
+            except OpenMMException:
+                if i == 0:
+                    raise
+                else:
+                    # This happens on CI when no GPU is available.
+                    continue
+            context.setPositions(positions)
 
-        # The PythonTorchForce and the MinimizationReporter both involve calling back into Python code,
-        # possibly from different threads.  Make sure it doesn't cause any problems.
+            # The PythonTorchForce and the MinimizationReporter both involve calling back into Python code,
+            # possibly from different threads.  Make sure it doesn't cause any problems.
 
-        class Reporter(MinimizationReporter):
-            count = 0
-            def report(self, iteration, x, grad, args):
-                self.count += 1
-                return False
+            class Reporter(MinimizationReporter):
+                count = 0
+                def report(self, iteration, x, grad, args):
+                    self.count += 1
+                    return False
 
-        reporter = Reporter()
-        LocalEnergyMinimizer.minimize(context, tolerance=1e-3, reporter=reporter)
-        self.assertTrue(reporter.count > 0)
-        state = context.getState(energy=True, positions=True)
-        self.assertAlmostEqual(0.0, state.getPotentialEnergy().value_in_unit(kilojoules_per_mole))
+            reporter = Reporter()
+            LocalEnergyMinimizer.minimize(context, tolerance=1e-3, reporter=reporter)
+            self.assertTrue(reporter.count > 0)
+            state = context.getState(energy=True, positions=True)
+            self.assertAlmostEqual(0.0, state.getPotentialEnergy().value_in_unit(kilojoules_per_mole))
 
     def testMemory(self):
         """Test for memory leaks in the Python/C++ interface."""

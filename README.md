@@ -82,7 +82,7 @@ def compute(state, positions):
 
 The State contains global parameters and periodic box vectors.  The Tensor contains particle positions.  The function
 should compute the potential energy and forces, returning them as its two return values.  The energy should be a
-scalar Tenor containing the value in kJ/mol.  The forces should be a Tensor of shape `(# particles, 3)` containing
+scalar Tensor containing the value in kJ/mol.  The forces should be a Tensor of shape `(# particles, 3)` containing
 the value in kJ/mol/nm.
 
 Now create a PythonTorchForce, passing the function to the constructor.
