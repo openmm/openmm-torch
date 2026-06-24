@@ -5,7 +5,7 @@
 # The version number is set here and copied to anywhere it is needed.
 SET(OPENMM_TORCH_VERSION 1.5 CACHE STRING "The version of OpenMM-Torch that will be built." FORCE)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 3.5)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.12)
 
 # We need to know where OpenMM is installed so we can access the headers and libraries.
 SET(OPENMM_DIR "/usr/local/openmm" CACHE PATH "Where OpenMM is installed")
@@ -139,12 +139,12 @@ IF(NN_BUILD_OPENCL_LIB)
     ADD_SUBDIRECTORY(platforms/opencl)
 ENDIF(NN_BUILD_OPENCL_LIB)
 
-FIND_PACKAGE(CUDA QUIET)
-IF(CUDA_FOUND)
+FIND_PACKAGE(CUDAToolkit QUIET)
+IF(CUDAToolkit_FOUND)
     SET(NN_BUILD_CUDA_LIB ON CACHE BOOL "Build implementation for CUDA")
-ELSE(CUDA_FOUND)
+ELSE(CUDAToolkit_FOUND)
     SET(NN_BUILD_CUDA_LIB OFF CACHE BOOL "Build implementation for CUDA")
-ENDIF(CUDA_FOUND)
+ENDIF(CUDAToolkit_FOUND)
 IF(NN_BUILD_CUDA_LIB)
     ADD_SUBDIRECTORY(platforms/cuda)
 ENDIF(NN_BUILD_CUDA_LIB)

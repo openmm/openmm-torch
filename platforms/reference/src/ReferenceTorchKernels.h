@@ -72,6 +72,37 @@ private:
     bool usePeriodic, outputsForces;
 };
 
+/**
+ * This kernel is invoked by PythonTorchForceImpl to calculate the forces acting on the system and the energy of the system.
+ */
+class ReferenceCalcPythonTorchForceKernel : public CalcPythonTorchForceKernel {
+public:
+    ReferenceCalcPythonTorchForceKernel(std::string name, const OpenMM::Platform& platform) : CalcPythonTorchForceKernel(name, platform) {
+    }
+    /**
+     * Initialize the kernel.
+     *
+     * @param context    the ContextImpl this kernel will be applied to
+     * @param force      the PythonTorchForce this kernel will be used for
+     */
+    void initialize(const OpenMM::ContextImpl& context, const PythonTorchForce& force);
+    /**
+     * Execute the kernel to calculate the forces and/or energy.
+     *
+     * @param context        the context in which to execute this kernel
+     * @param includeForces  true if forces should be calculated
+     * @param includeEnergy  true if the energy should be calculated
+     * @return the potential energy due to the force
+     */
+    double execute(OpenMM::ContextImpl& context, bool includeForces, bool includeEnergy);
+private:
+    const PythonTorchForceComputation* computation;
+    std::vector<OpenMM::Vec3> positions;
+    std::vector<int> particles;
+    int numParticles;
+    bool usePeriodic;
+};
+
 } // namespace TorchPlugin
 
 #endif /*REFERENCE_TORCH_KERNELS_H_*/

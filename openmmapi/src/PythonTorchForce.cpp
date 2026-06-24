@@ -1,12 +1,10 @@
 /* -------------------------------------------------------------------------- *
- *                               OpenMM-NN                                    *
+ *                                   OpenMM                                   *
  * -------------------------------------------------------------------------- *
- * This is part of the OpenMM molecular simulation toolkit originating from   *
- * Simbios, the NIH National Center for Physics-Based Simulation of           *
- * Biological Structures at Stanford, funded under the NIH Roadmap for        *
- * Medical Research, grant U54 GM072970. See https://simtk.org.               *
+ * This is part of the OpenMM molecular simulation toolkit.                   *
+ * See https://openmm.org/development.                                        *
  *                                                                            *
- * Portions copyright (c) 2018 Stanford University and the Authors.           *
+ * Portions copyright (c) 2026 Stanford University and the Authors.           *
  * Authors: Peter Eastman                                                     *
  * Contributors:                                                              *
  *                                                                            *
@@ -29,40 +27,51 @@
  * USE OR OTHER DEALINGS IN THE SOFTWARE.                                     *
  * -------------------------------------------------------------------------- */
 
-#include "ReferenceTorchKernelFactory.h"
-#include "ReferenceTorchKernels.h"
-#include "openmm/reference/ReferencePlatform.h"
-#include "openmm/internal/ContextImpl.h"
-#include "openmm/OpenMMException.h"
-#include <vector>
+#include "PythonTorchForce.h"
+#include "internal/PythonTorchForceImpl.h"
 
 using namespace TorchPlugin;
 using namespace OpenMM;
 using namespace std;
 
-extern "C" OPENMM_EXPORT void registerPlatforms() {
+PythonTorchForce::PythonTorchForce(PythonTorchForceComputation* computation, const map<string, double>& globalParameters, const vector<int>& particles) :
+        computation(computation), globalParameters(globalParameters), usePeriodic(false), particles(particles) {
 }
 
-extern "C" OPENMM_EXPORT void registerKernelFactories() {
-    for (int i = 0; i < Platform::getNumPlatforms(); i++) {
-        Platform& platform = Platform::getPlatform(i);
-        if (dynamic_cast<ReferencePlatform*>(&platform) != NULL) {
-            ReferenceTorchKernelFactory* factory = new ReferenceTorchKernelFactory();
-            platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
-            platform.registerKernelFactory(CalcPythonTorchForceKernel::Name(), factory);
-        }
-    }
+PythonTorchForce::~PythonTorchForce() {
+    delete computation;
 }
 
-extern "C" OPENMM_EXPORT void registerTorchReferenceKernelFactories() {
-    registerKernelFactories();
+const PythonTorchForceComputation& PythonTorchForce::getComputation() const {
+    return *computation;
 }
 
-KernelImpl* ReferenceTorchKernelFactory::createKernelImpl(std::string name, const Platform& platform, ContextImpl& context) const {
-    ReferencePlatform::PlatformData& data = *static_cast<ReferencePlatform::PlatformData*>(context.getPlatformData());
-    if (name == CalcTorchForceKernel::Name())
-        return new ReferenceCalcTorchForceKernel(name, platform);
-    if (name == CalcPythonTorchForceKernel::Name())
-        return new ReferenceCalcPythonTorchForceKernel(name, platform);
-    throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
+const map<string, double>& PythonTorchForce::getGlobalParameters() const {
+    return globalParameters;
+}
+
+void PythonTorchForce::setParticles(const std::vector<int>& particles) {
+    this->particles = particles;
+}
+
+bool PythonTorchForce::usesPeriodicBoundaryConditions() const {
+    return usePeriodic;
+}
+
+void PythonTorchForce::setUsesPeriodicBoundaryConditions(bool periodic) {
+    usePeriodic = periodic;
+}
+
+const vector<char>& PythonTorchForce::getPickledFunction() const {
+    return pickled;
+}
+
+void PythonTorchForce::setPickledFunction(char* function, int length) {
+    pickled.clear();
+    for (int i = 0; i < length; i++)
+        pickled.push_back(function[i]);
+}
+
+ForceImpl* PythonTorchForce::createImpl() const {
+    return new PythonTorchForceImpl(*this);
 }

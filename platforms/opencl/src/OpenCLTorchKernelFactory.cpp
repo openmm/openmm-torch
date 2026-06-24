@@ -51,6 +51,7 @@ extern "C" OPENMM_EXPORT void registerKernelFactories() {
         Platform& platform = Platform::getPlatformByName("OpenCL");
         OpenCLTorchKernelFactory* factory = new OpenCLTorchKernelFactory();
         platform.registerKernelFactory(CalcTorchForceKernel::Name(), factory);
+        platform.registerKernelFactory(CalcPythonTorchForceKernel::Name(), factory);
     }
     catch (std::exception ex) {
         // Ignore
@@ -71,5 +72,7 @@ KernelImpl* OpenCLTorchKernelFactory::createKernelImpl(std::string name, const P
     OpenCLContext& cl = *static_cast<OpenCLPlatform::PlatformData*>(context.getPlatformData())->contexts[0];
     if (name == CalcTorchForceKernel::Name())
         return new CommonCalcTorchForceKernel(name, platform, cl);
+    if (name == CalcPythonTorchForceKernel::Name())
+        return new CommonCalcPythonTorchForceKernel(name, platform, context, cl);
     throw OpenMMException((std::string("Tried to create kernel with illegal kernel name '")+name+"'").c_str());
 }
