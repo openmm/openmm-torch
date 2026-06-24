@@ -64,7 +64,7 @@ jobs:
 
       - name: "Install OpenCL on Ubuntu (if needed)"
         if: matrix.opencl == true
-        run: source devtools/ci/gh-actions/scripts/install_intel_opencl.sh
+        run: source devtools/scripts/install_intel_opencl.sh
 
       - name: Manage disk space
         if: startsWith(matrix.os, 'ubuntu')
